@@ -103,10 +103,12 @@ reset_buffer = True
 cum_reward = 0.0
 rounds = 0
 per_round_steps = 0
+act_steps = 0
 
 if args.profile:
     for step in range(20):
-        last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+        last_obs, cum_reward, rounds, act_steps,\
+        per_round_steps, evaluated, reset_buffer\
             = one_step(
                 reset_buffer,
                 buf,
@@ -116,6 +118,7 @@ if args.profile:
                 my_tqdm,
                 cum_reward,
                 rounds,
+                act_steps,
                 per_round_steps,
                 render,
                 need_to_eval,
@@ -124,7 +127,8 @@ if args.profile:
 
     with Profile(f'logs/{args.log_name}'):
         for step in range(5):
-            last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+            last_obs, cum_reward, rounds, act_steps,\
+            per_round_steps, evaluated, reset_buffer\
                 = one_step(
                     reset_buffer,
                     buf,
@@ -134,6 +138,7 @@ if args.profile:
                     my_tqdm,
                     cum_reward,
                     rounds,
+                    act_steps,
                     per_round_steps,
                     render,
                     need_to_eval,
@@ -143,7 +148,8 @@ if args.profile:
     for step in range(remaining_steps):
         if ((step + 25) % hp.Model_save) == 0 :
             need_to_eval = True
-        last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+        last_obs, cum_reward, rounds, act_steps,\
+        per_round_steps, evaluated, reset_buffer\
             = one_step(
                 reset_buffer,
                 buf,
@@ -153,6 +159,7 @@ if args.profile:
                 my_tqdm,
                 cum_reward,
                 rounds,
+                act_steps,
                 per_round_steps,
                 render,
                 need_to_eval,
@@ -165,7 +172,8 @@ else :
     for step in range(total_steps):
         if (step>0) and ((step % hp.Model_save) == 0) :
             need_to_eval = True
-        last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+        last_obs, cum_reward, rounds, act_steps,\
+        per_round_steps, evaluated, reset_buffer\
             = one_step(
                 reset_buffer,
                 buf,
@@ -175,6 +183,7 @@ else :
                 my_tqdm,
                 cum_reward,
                 rounds,
+                act_steps,
                 per_round_steps,
                 render,
                 need_to_eval,

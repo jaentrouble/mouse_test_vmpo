@@ -77,3 +77,4 @@ histogram = 1000
 log_per_steps = 100
 log_grad_per_steps = 1
 
+log_actions = 10

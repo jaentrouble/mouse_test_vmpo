@@ -116,7 +116,7 @@ class EnvWrapper():
 
 
 def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
-            last_obs, my_tqdm:tqdm, cum_reward:float, rounds:int,
+            last_obs, my_tqdm:tqdm, cum_reward:float, rounds:int,act_steps:int,
             per_round_steps:int, render: bool, need_to_eval:bool,
             eval_f = None):
     """
@@ -130,11 +130,16 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
     else:
         buf.reset_continue()
         explore_n = hp.Batch_size
-    for _ in range(explore_n):
+    for i in range(explore_n):
+        act_steps += 1
         action = player.act(last_obs)
         new_obs, r, d, _ = env.step(action)
         buf.store_step(last_obs, action, r, d)
         
+        if (i+1)%hp.log_actions == 0:
+            with player.file_writer.as_default():
+                tf.summary.scalar('a0', action,act_steps)
+
         cum_reward += r
         per_round_steps += 1
 
@@ -173,6 +178,7 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
     return (last_obs,
             cum_reward,
             rounds,
+            act_steps,
             per_round_steps,
             evaluated,
             reset_buffer)
