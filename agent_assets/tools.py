@@ -123,6 +123,7 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
     1. Fill buffer (if need_to_reset: reset all)
     2. Train player one step
     """
+    evaluated = False
     if reset_buffer:
         buf.reset_all()
         explore_n = hp.Batch_size+hp.Buf.N
@@ -140,7 +141,6 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
         if render:
             env.render()
 
-        evaluated = False
         if d:
             if render:
                 env.render()
