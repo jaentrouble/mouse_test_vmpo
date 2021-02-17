@@ -138,7 +138,7 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
         
         if (i+1)%hp.log_actions == 0:
             with player.file_writer.as_default():
-                tf.summary.scalar('a0', action,act_steps)
+                tf.summary.scalar('a0', action[0],act_steps)
 
         cum_reward += r
         per_round_steps += 1
