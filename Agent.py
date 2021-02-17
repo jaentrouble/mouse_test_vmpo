@@ -162,8 +162,7 @@ class Player():
         self.model_dir = None
 
     def _lr(self, name):
-        effective_steps = self.total_steps - hp.Learn_start\
-                                           - int(hp.lr[name].halt_steps)
+        effective_steps = self.total_steps - int(hp.lr[name].halt_steps)
         if tf.greater(effective_steps, int(hp.lr[name].nsteps)):
             return hp.lr[name].end
         elif tf.less(effective_steps, 0):
