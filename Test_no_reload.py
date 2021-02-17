@@ -115,6 +115,8 @@ if args.profile:
             rounds,
             per_round_steps,
             render,
+            need_to_eval,
+            evaluate_f,
         )
 
     with Profile(f'logs/{args.log_name}'):
@@ -130,6 +132,8 @@ if args.profile:
                 rounds,
                 per_round_steps,
                 render,
+                need_to_eval,
+                evaluate_f
             )
     remaining_steps = total_steps - 25
     for step in range(remaining_steps):
