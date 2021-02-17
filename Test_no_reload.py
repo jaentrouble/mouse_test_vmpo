@@ -97,7 +97,7 @@ player = Player(
 )
 
 need_to_eval = False
-buf = ReplayBuffer
+buf = ReplayBuffer(env.observation_space)
 reset_buffer = True
 cum_reward = 0.0
 rounds = 0

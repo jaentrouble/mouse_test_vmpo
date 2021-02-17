@@ -5,7 +5,7 @@ class ReplayBuffer():
     """A on-policy replay buffer, no importance sampling
     """
 
-    def __init__(self, observation_space, need_next_obs=False):
+    def __init__(self, observation_space):
         """
         Stores observation space in uint8 dtype
 
