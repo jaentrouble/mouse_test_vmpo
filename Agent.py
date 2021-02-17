@@ -411,7 +411,7 @@ class Player():
                 loss = self.common_optimizer.get_scaled_loss(loss)
 
         critic_vars = self.models['critic'].trainable_weights
-        actor_vars = self.models['actor'].traninable_weights
+        actor_vars = self.models['actor'].trainable_weights
         vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
 
         all_vars = critic_vars+actor_vars+vmpo_vars
