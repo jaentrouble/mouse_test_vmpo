@@ -40,7 +40,7 @@ def unity_conv_vmpo(observation_space, action_space):
 
     return actor, critic
 
-def unity_classic_vmpo(observation_space, action_space):
+def classic_dense_vmpo(observation_space, action_space):
     encoder_f = em.encoder_simple_dense
 
     actor = am.actor_vmpo_dense(observation_space, action_space, encoder_f)

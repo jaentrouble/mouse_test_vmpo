@@ -15,14 +15,14 @@ from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 from agent_assets.replaybuffer import ReplayBuffer
 
-ENVIRONMENT = 'mouseUnity-v0'
+ENVIRONMENT = 'Pendulum-v0'
 
 env_kwargs = dict(
-    ip='localhost',
-    port = 7777,
 )
 
-model_f = am.unity_conv_vmpo
+CLASSIC = True
+
+model_f = am.classic_dense_vmpo
 
 hp.Actor_activation = 'tanh'
 
@@ -79,8 +79,9 @@ hp.ICM_loss_forward_weight = 0.2
 st = time.time()
 
 need_to_eval = False
-
 env = gym.make(ENVIRONMENT, **env_kwargs)
+if CLASSIC:
+    env = tools.EnvWrapper(env)
 last_obs = env.reset()
 render = args.render
 if render :
