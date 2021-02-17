@@ -43,6 +43,7 @@ my_tqdm = tqdm(total=total_steps, dynamic_ncols=True)
 
 hp.Batch_size = 192
 hp.Buf.N = 64
+hp.k_train_step = 8
 
 hp.Model_save = 300
 hp.histogram = 300
@@ -122,6 +123,7 @@ if args.profile:
                 per_round_steps,
                 render,
                 need_to_eval,
+                hp.k_train_step,
                 evaluate_f,
             )
 
@@ -142,6 +144,7 @@ if args.profile:
                     per_round_steps,
                     render,
                     need_to_eval,
+                    hp.k_train_step,
                     evaluate_f
                 )
     remaining_steps = total_steps - 25
@@ -163,6 +166,7 @@ if args.profile:
                 per_round_steps,
                 render,
                 need_to_eval,
+                hp.k_train_step,
                 evaluate_f,
             )
         if evaluated:
@@ -187,6 +191,7 @@ else :
                 per_round_steps,
                 render,
                 need_to_eval,
+                hp.k_train_step,
                 evaluate_f,
             )
         if evaluated:

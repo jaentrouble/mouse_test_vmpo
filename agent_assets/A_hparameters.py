@@ -2,6 +2,8 @@ Batch_size = 192
 Target_update = 100
 Q_discount = 0.99
 
+k_train_step = 8
+
 Actor_activation = 'tanh'
 
 class Lr():
