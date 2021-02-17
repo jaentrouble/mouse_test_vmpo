@@ -78,7 +78,7 @@ hp.ICM_loss_forward_weight = 0.2
 # For benchmark
 st = time.time()
 
-need_to_eval = False
+
 env = gym.make(ENVIRONMENT, **env_kwargs)
 if CLASSIC:
     env = tools.EnvWrapper(env)
@@ -96,6 +96,7 @@ player = Player(
     mixed_float=args.mixed_float,
 )
 
+need_to_eval = False
 buf = ReplayBuffer
 reset_buffer = True
 cum_reward = 0.0
