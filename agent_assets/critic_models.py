@@ -4,14 +4,17 @@ from tensorflow.keras import layers
 from . import A_hparameters as hp
 import numpy as np
 """
-Critic models takes three inputs:
+Q models take two inputs:
     1. encoded states
     2. actions
 and returns an expected future reward (a single float).
 
+V models take one input:
+    1. encoded states
+
 Critic model functions should take following arguments:
     1. observation_space
-    2. action_space : Box
+    2. action_space : Box (Even if the model is V and not need action)
     3. encoder_f
 """
 
@@ -101,6 +104,30 @@ def critic_dense_iqn(observation_space, action_space, encoder_f):
 
     model = keras.Model(
         inputs=[action_input,tau_input] + encoder_inputs, 
+        outputs=outputs,
+        name='critic'
+    )
+
+    return model
+
+def critic_v_dense(observation_space, action_space, encoder_f):
+    encoded_state, encoder_inputs = encoder_f(observation_space)
+    x = layers.Flatten(name='critic_flatten_state')(encoded_state)
+
+    x = layers.Dense(256, activation='relu',
+                     name='critic_dense1')(x)
+    x = layers.Dense(128, activation='relu',
+                     name='critic_dense2')(x)
+    x = layers.Dense(64, activation='relu',
+                     name='critic_dense3')(x)
+    x = layers.Dense(1, activation='linear',dtype='float32',
+                           name='critic_dense4')(x)
+    outputs = tf.squeeze(x, name='critic_squeeze')
+    outputs = layers.Activation('linear',dtype=tf.float32,
+                                name='critic_float32')(outputs)
+
+    model = keras.Model(
+        inputs=encoder_inputs, 
         outputs=outputs,
         name='critic'
     )

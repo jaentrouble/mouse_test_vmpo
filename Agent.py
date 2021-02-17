@@ -13,6 +13,7 @@ import pickle
 from tqdm import tqdm
 from tensorflow.keras import mixed_precision
 from functools import partial
+import tensorflow_probability as tfp
 
 #leave memory space for opencl
 gpus=tf.config.experimental.list_physical_devices('GPU')
@@ -204,42 +205,25 @@ class Player():
         Policy part
         """
         processed_state = self.pre_processing(before_state)
-        raw_action = self.models['actor'](processed_state, training=False)
-        if self.total_steps % hp.log_per_steps==0:
-            tf.summary.scalar('a0_raw', raw_action[0][0], self.total_steps)
-            tf.summary.scalar('a1_raw', raw_action[0][1], self.total_steps)
-        noised_action = self.oup_noise(raw_action)
-        return noised_action
-
-    @tf.function
-    def choose_action_no_noise(self, before_state):
-        """
-        Policy part
-        For evaluation; no noise is added
-        """
-        processed_state = self.pre_processing(before_state)
-        raw_action = self.models['actor'](processed_state, training=False)
-        action = raw_action
+        # V-MPO uses old target model to collect data
+        mu, sigma_chol = self.t_models['actor'](processed_state, training=False)
+        action_distrib = tfp.distributions.MultivariateNormalTril(
+            loc=mu, scale_tril=sigma_chol, name='choose_action_dist'
+        )
+        action = action_distrib.sample()
         return action
 
+
     def act_batch(self, before_state, evaluate=False):
-        if evaluate:
-            action = self.choose_action_no_noise(before_state)
-        else:
-            action = self.choose_action(before_state)
+        action = self.choose_action(before_state)
         return action.numpy()
         
     def act(self, before_state, evaluate=False):
         """
         Will squeeze axis=0 if Batch_num = 1
         If you don't want to squeeze, use act_batch()
-        
-        If eval = True, noise is not added
         """
-        if evaluate:
-            action = self.choose_action_no_noise(before_state)
-        else:
-            action = self.choose_action(before_state)
+        action = self.choose_action(before_state)
         action_np = action.numpy()
         if action_np.shape[0] == 1:
             if self.total_steps % hp.log_per_steps==0 and not evaluate:

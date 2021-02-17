@@ -63,10 +63,7 @@ ICM_loss_forward_weight = 0.2
 
 class _Buf():
     def __init__(self):
-        self.alpha = 0.6
-        self.beta = 0.4
-        self.epsilon = 1e-3
-        self.N = 5
+        self.N = 64
 
 Buf = _Buf()
 

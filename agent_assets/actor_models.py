@@ -46,6 +46,7 @@ def actor_simple_dense(observation_space, action_space, encoder_f):
 def actor_vmpo_dense(observation_space, action_space, encoder_f):
     encoded_state, encoder_inputs = encoder_f(observation_space)
     s = layers.Flatten(name='actor_flatten_state')(encoded_state)
+    
     action_shape = action_space.shape
     action_num = tf.math.reduce_prod(action_shape)
     action_range = action_space.high - action_space.low
@@ -60,7 +61,6 @@ def actor_vmpo_dense(observation_space, action_space, encoder_f):
 
     mu = layers.Dense(action_num, activation=hp.Actor_activation,
                      name='actor_mu_dense',)(x)
-    mu = layers.Reshape(action_space.shape, name='actor_reshape')(mu)
     mu = mu*action_range/2 + action_middle
     mu = layers.Activation('linear',dtype='float32',
                                          name='actor_mu_float32')(mu)
@@ -80,6 +80,8 @@ def actor_vmpo_dense(observation_space, action_space, encoder_f):
     sigma_chol = tf.tensor_scatter_nd_update(
         chol_tri, diag_i_batch, chol_diags, name='actor_sigma_chol'
     )
+    sigma_chol = layers.Activation('linear',dtype='float32',
+                                    name='actor_sig_float32')
 
 
 
