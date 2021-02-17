@@ -198,7 +198,7 @@ class Player():
         processed_state = self.pre_processing(before_state)
         # V-MPO uses old target model to collect data
         mu, sigma_chol = self.t_models['actor'](processed_state, training=False)
-        action_distrib = tfp.distributions.MultivariateNormalTril(
+        action_distrib = tfp.distributions.MultivariateNormalTriL(
             loc=mu, scale_tril=sigma_chol, name='choose_action_dist'
         )
         action = action_distrib.sample()
@@ -362,11 +362,11 @@ class Player():
                 # (B,)
                 adv_target = G - v_target
                 mu_t, sig_t = self.t_models['actor'](o, training=False)
-                target_dist = tfp.distributions.MultivariateNormalTril(
+                target_dist = tfp.distributions.MultivariateNormalTriL(
                     loc=mu_t, scale_tril=sig_t, name='target_dist'
                 )
             mu, sig = self.models['actor'](o, training=True)
-            online_dist = tfp.distributions.MultivariateNormalTril(
+            online_dist = tfp.distributions.MultivariateNormalTriL(
                 loc=mu, scale_tril=sig, name='online_dist'
             )
             online_logprob = online_dist.log_prob(a)
@@ -383,10 +383,10 @@ class Player():
                         adv_top_half/self.eta
                     )))
             
-            online_dist_mu = tfp.distributions.MultivariateNormalTril(
+            online_dist_mu = tfp.distributions.MultivariateNormalTriL(
                 loc=mu, scale_tril=sig_t, name='online_dist_mu'
             )
-            online_dist_sig = tfp.distributions.MultivariateNormalTril(
+            online_dist_sig = tfp.distributions.MultivariateNormalTriL(
                 loc=mu_t, scale_tril=sig, name='online_dist_sig'
             )
 
