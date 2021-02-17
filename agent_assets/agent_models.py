@@ -49,19 +49,3 @@ def unity_classic_vmpo(observation_space, action_space):
 
     return actor, critic
 
-if __name__ == '__main__':
-    from gym.spaces import Dict, Box
-    import numpy as np
-    observation_space = Dict(
-        {'Right' : Box(0, 255, shape=(100,3,3), dtype=np.uint8),
-         'Left' : Box(0,255, shape=(100,3,3), dtype = np.uint8)}
-    )
-    action_space = Box(
-        low=np.array([-10.0,-np.pi]),
-        high=np.array([10.0,np.pi]),
-        dtype=np.float32
-    )
-    encoder, actor, critic = eye_brain_model(observation_space,action_space)
-    encoder.summary()
-    actor.summary()
-    critic.summary()
