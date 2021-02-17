@@ -33,7 +33,6 @@ parser.add_argument('-r','--render', dest='render',action='store_true', default=
 parser.add_argument('--step', dest='total_steps',default=100000, type=int)
 parser.add_argument('-n','--logname', dest='log_name',default=None)
 parser.add_argument('-pf', dest='profile',action='store_true',default=False)
-# parser.add_argument('-lr', dest='lr', default=1e-5, type=float)
 parser.add_argument('-mf','--mixedfloat', dest='mixed_float', 
                     action='store_true',default=False)
 parser.add_argument('-l','--load', dest='load', default=None)
@@ -63,6 +62,10 @@ hp.lr['encoder'].grad_clip = None
 
 hp.lr['forward'] = hp.lr['encoder']
 hp.lr['inverse'] = hp.lr['encoder']
+
+hp.VMPO_eps_eta = 1e-1
+hp.VMPO_eps_alpha_mu = 1e-2
+hp.VMPO_eps_alpha_sig = 1e-5
 
 hp.IQN_ENABLE = False
 

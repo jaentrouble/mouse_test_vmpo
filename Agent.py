@@ -411,15 +411,6 @@ class Player():
             if self.mixed_float:
                 loss = self.common_optimizer.get_scaled_loss(loss)
 
-        if self.total_steps % hp.log_per_steps==0:
-            tf.summary.scalar('L_V', L_V, self.total_steps)
-            tf.summary.scalar('L_pi', L_PI, self.total_steps)
-            tf.summary.scalar('L_eta', L_ETA, self.total_steps)
-            tf.summary.scalar('L_alpha_mu', L_A_mu, self.total_steps)
-            tf.summary.scalar('L_alpha_sig', L_A_sig, self.total_steps)
-            tf.summary.scalar('Total_loss',original_loss, self.total_steps)
-            tf.summary.scalar('MaxV', tf.reduce_max(v), self.total_steps)
-
         critic_vars = self.models['critic'].trainable_weights
         actor_vars = self.models['actor'].traninable_weights
         vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
@@ -436,6 +427,26 @@ class Player():
         self.common_optimizer.apply_gradients(
             zip(all_gradients, all_vars)
         )
+
+        # Clip eta, alpha
+        self.eta.assign(
+            tf.reduce_max([self.eta, hp.VMPO_eta_min]))
+        self.alpha_mu.assign(
+            tf.reduce_max([self.alpha_mu, hp.VMPO_alpha_min]))
+        self.alpha_sig.assign(
+            tf.reduce_max([self.alpha_sig, hp.VMPO_alpha_min]))
+
+
+        if self.total_steps % hp.log_per_steps==0:
+            tf.summary.scalar('L_V', L_V, self.total_steps)
+            tf.summary.scalar('L_pi', L_PI, self.total_steps)
+            tf.summary.scalar('L_eta', L_ETA, self.total_steps)
+            tf.summary.scalar('L_alpha_mu', L_A_mu, self.total_steps)
+            tf.summary.scalar('L_alpha_sig', L_A_sig, self.total_steps)
+            tf.summary.scalar('Total_loss',original_loss, self.total_steps)
+            tf.summary.scalar('MaxV', tf.reduce_max(v), self.total_steps)
+
+
         if self.total_steps % hp.log_grad_per_steps == 0:
             tf.summary.scalar(
                 'critic_grad_norm',

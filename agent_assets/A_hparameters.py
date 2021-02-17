@@ -61,6 +61,8 @@ ICM_loss_forward_weight = 0.2
 VMPO_eps_eta = 1e-1
 VMPO_eps_alpha_mu = 1e-2
 VMPO_eps_alpha_sig = 1e-5
+VMPO_eta_min = 1e-8
+VMPO_alpha_min = 1e-8
 
 
 class _Buf():
