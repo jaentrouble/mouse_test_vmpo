@@ -138,7 +138,7 @@ if args.profile:
             )
     remaining_steps = total_steps - 25
     for step in range(remaining_steps):
-        if ((hp.Learn_start + 25 + step) % hp.Model_save) == 0 :
+        if ((step + 25) % hp.Model_save) == 0 :
             need_to_eval = True
         last_obs, cum_reward, rounds, per_round_steps, evaluated = one_step(
             reset_buffer,
