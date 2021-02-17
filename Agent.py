@@ -354,10 +354,19 @@ class Player():
             with tape.stop_recording():
                 if hp.IQN_ENABLE:
                     G = tf.reduce_mean(G, axis=-1)
-                v_target = self.t_models['critic'](
-                    o,
-                    training=False,
-                )
+                    iqn_input = o.copy()
+                    tau = tf.random.uniform([batch_size, hp.IQN_SUPPORT])
+                    iqn_input['tau'] = tau
+                    support_target = self.t_models['critic'](
+                        iqn_input,
+                        training=False
+                    )
+                    v_target = tf.reduce_mean(support_target,axis=-1)
+                else:
+                    v_target = self.t_models['critic'](
+                        o,
+                        training=False,
+                    )
                 # (B,)
                 adv_target = G - v_target
                 mu_t, sig_t = self.t_models['actor'](o, training=False)
