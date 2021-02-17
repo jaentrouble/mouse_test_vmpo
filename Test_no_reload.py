@@ -45,6 +45,7 @@ hp.Batch_size = 192
 hp.Buf.N = 64
 
 hp.Model_save = 300
+hp.histogram = 300
 
 hp.lr['common'].halt_steps = 0
 hp.lr['common'].start = 1e-4

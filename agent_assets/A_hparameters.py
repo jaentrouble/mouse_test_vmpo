@@ -71,9 +71,9 @@ class _Buf():
 
 Buf = _Buf()
 
-Model_save = 200000
+Model_save = 1000
 
-histogram = 100000
+histogram = 1000
 log_per_steps = 100
 log_grad_per_steps = 1
 
