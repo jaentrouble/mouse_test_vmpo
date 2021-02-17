@@ -371,7 +371,8 @@ class Player():
             online_logprob = online_dist.log_prob(a)
             
             # Top half advantages
-            top_i = tf.argsort(adv_target)[:tf.shape(adv_target)[0]//2]
+            top_i = tf.argsort(adv_target, 
+                        direction='DESCENDING')[:tf.shape(adv_target)[0]//2]
             adv_top_half = tf.gather(adv_target, top_i)
             online_logprob_top_half = tf.gather(online_logprob, top_i)
             # (B/2,)
