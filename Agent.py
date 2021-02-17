@@ -499,8 +499,13 @@ class Player():
                 model = self.models[t_model_name]
                 t_model = self.t_models[t_model_name]
                 t_model.set_weights(model.get_weights())
+            target_updated=True
+        else:
+            target_updated = False
 
         self.total_steps.assign_add(1)
+
+        return target_updated
 
     def save_model(self):
         """

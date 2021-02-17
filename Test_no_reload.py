@@ -5,6 +5,7 @@ import numpy as np
 from Agent import Player
 import agent_assets.agent_models as am
 from agent_assets import tools
+from agent_assets.tools import one_step
 import agent_assets.A_hparameters as hp
 from tqdm import tqdm
 import argparse
@@ -12,6 +13,7 @@ import os
 import sys
 from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
+from agent_assets.replaybuffer import ReplayBuffer
 
 ENVIRONMENT = 'mouseUnity-v0'
 
@@ -20,7 +22,7 @@ env_kwargs = dict(
     port = 7777,
 )
 
-model_f = am.unity_conv_ddpg
+model_f = am.unity_conv_vmpo
 
 hp.Actor_activation = 'tanh'
 
@@ -37,27 +39,20 @@ parser.add_argument('-mf','--mixedfloat', dest='mixed_float',
 parser.add_argument('-l','--load', dest='load', default=None)
 args = parser.parse_args()
 
-vid_type = 'mp4'
 total_steps = int(args.total_steps)
 my_tqdm = tqdm(total=total_steps, dynamic_ncols=True)
 
+hp.Batch_size = 192
+hp.Buf.N = 64
 
-hp.Model_save = 30000
-hp.Learn_start = 20000
+hp.Model_save = 300
 
-hp.lr['actor'].halt_steps = 0
-hp.lr['actor'].start = 1e-5
-hp.lr['actor'].end = 1e-5
-hp.lr['actor'].nsteps = 1e6
-hp.lr['actor'].epsilon = 1e-3
-hp.lr['actor'].grad_clip = None
-
-hp.lr['critic'].halt_steps = 0
-hp.lr['critic'].start = 1e-4
-hp.lr['critic'].end = 1e-4
-hp.lr['critic'].nsteps = 1e6
-hp.lr['critic'].epsilon = 1e-3
-hp.lr['critic'].grad_clip = None
+hp.lr['common'].halt_steps = 0
+hp.lr['common'].start = 1e-4
+hp.lr['common'].end = 1e-4
+hp.lr['common'].nsteps = 1e6
+hp.lr['common'].epsilon = 1e-3
+hp.lr['common'].grad_clip = None
 
 hp.lr['encoder'].halt_steps = 0
 hp.lr['encoder'].start = 1e-5
@@ -69,21 +64,13 @@ hp.lr['encoder'].grad_clip = None
 hp.lr['forward'] = hp.lr['encoder']
 hp.lr['inverse'] = hp.lr['encoder']
 
-hp.OUP_stddev_start = 0.2
-hp.OUP_stddev_end = 0.05
-hp.OUP_stddev_nstep = 2e5
-hp.OUP_stddev_nstep = int(hp.OUP_stddev_nstep)
-hp.OUP_noise_max = 0.5
-
 hp.IQN_ENABLE = False
 
 hp.ICM_ENABLE = False
 hp.ICM_intrinsic = 1.0
 hp.ICM_loss_forward_weight = 0.2
 
-hp.Target_update_tau = 1e-2
 
-hp.Buf.N = 1
 
 # For benchmark
 st = time.time()
@@ -91,87 +78,99 @@ st = time.time()
 need_to_eval = False
 
 env = gym.make(ENVIRONMENT, **env_kwargs)
-bef_o = env.reset()
+last_obs = env.reset()
+render = args.render
+if render :
+    env.render()
 
 player = Player(
     observation_space= env.observation_space, 
     action_space= env.action_space, 
     model_f= model_f,
-    tqdm= my_tqdm,
     m_dir=args.load,
     log_name= args.log_name,
     mixed_float=args.mixed_float,
 )
 
-if args.render :
-    env.render()
+buf = ReplayBuffer
+reset_buffer = True
+cum_reward = 0.0
+rounds = 0
+per_round_steps = 0
 
 if args.profile:
-    # Warm up
-    for step in range(hp.Learn_start+20):
-        action = player.act(bef_o)
-        aft_o,r,d,i = env.step(action)
-        player.step(bef_o,action,r,d,i)
-        if d :
-            bef_o = env.reset()
-        else:
-            bef_o = aft_o
-        if args.render :
-            env.render()
+    for step in range(20):
+        last_obs, cum_reward, rounds, per_round_steps, _ = one_step(
+            reset_buffer,
+            buf,
+            player,
+            env,
+            last_obs,
+            my_tqdm,
+            cum_reward,
+            rounds,
+            per_round_steps,
+            render,
+        )
 
     with Profile(f'logs/{args.log_name}'):
         for step in range(5):
-            action = player.act(bef_o)
-            aft_o,r,d,i = env.step(action)
-            player.step(bef_o,action,r,d,i)
-            if d :
-                bef_o = env.reset()
-            else:
-                bef_o = aft_o
-            if args.render :
-                env.render()
-    remaining_steps = total_steps - hp.Learn_start - 25
+            last_obs, cum_reward, rounds, per_round_steps, _ = one_step(
+                reset_buffer,
+                buf,
+                player,
+                env,
+                last_obs,
+                my_tqdm,
+                cum_reward,
+                rounds,
+                per_round_steps,
+                render,
+            )
+    remaining_steps = total_steps - 25
     for step in range(remaining_steps):
         if ((hp.Learn_start + 25 + step) % hp.Model_save) == 0 :
             need_to_eval = True
-        action = player.act(bef_o)
-        aft_o,r,d,i = env.step(action)
-        player.step(bef_o,action,r,d,i)
-        if d :
-            if need_to_eval:
-                player.save_model()
-                score = evaluate_f(player, env, vid_type)
-                print('eval_score:{0}'.format(score))
-                need_to_eval = False
-
-            bef_o = env.reset()
-        else:
-            bef_o = aft_o
-        if args.render :
-            env.render()
+        last_obs, cum_reward, rounds, per_round_steps, evaluated = one_step(
+            reset_buffer,
+            buf,
+            player,
+            env,
+            last_obs,
+            my_tqdm,
+            cum_reward,
+            rounds,
+            per_round_steps,
+            render,
+            need_to_eval,
+            evaluate_f,
+        )
+        if evaluated:
+            need_to_eval = False
 
 else :
     for step in range(total_steps):
         if (step>0) and ((step % hp.Model_save) == 0) :
             need_to_eval = True
-        action = player.act(bef_o)
-        aft_o,r,d,i = env.step(action)
-        player.step(bef_o,action,r,d,i)
-        if d :
-            if need_to_eval:
-                player.save_model()
-                score = evaluate_f(player, env, vid_type)
-                print('eval_score:{0}'.format(score))
-                need_to_eval = False
-
-            bef_o = env.reset()
-        else:
-            bef_o = aft_o
-        if args.render :
-            env.render()
+        last_obs, cum_reward, rounds, per_round_steps, evaluated = one_step(
+            reset_buffer,
+            buf,
+            player,
+            env,
+            last_obs,
+            my_tqdm,
+            cum_reward,
+            rounds,
+            per_round_steps,
+            render,
+            need_to_eval,
+            evaluate_f,
+        )
+        if evaluated:
+            need_to_eval = False
 
 player.save_model()
-score = evaluate_f(player, env, vid_type)
+score = evaluate_f(player, env, 'mp4')
 print('eval_score:{0}'.format(score))
 d = timedelta(seconds=time.time() - st)
 print(f'{total_steps}steps took {d}')

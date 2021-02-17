@@ -1,6 +1,11 @@
 import cv2
 from os import path, makedirs
 import numpy as np
+from .replaybuffer import ReplayBuffer
+from . import A_hparameters as hp
+from tqdm import tqdm
+from ..Agent import Player
+import tensorflow as tf
 
 def evaluate_unity(player, env, video_type):
     print('Evaluating...')
@@ -34,7 +39,7 @@ def evaluate_unity(player, env, video_type):
         loop += 1
         if not loop % 100:
             print('Eval : {}step passed'.format(loop))
-        a = player.act(o, evaluate=True)
+        a = player.act(o)
         o,r,done,i = env.step(a)
         score += r
         #eye recording
@@ -71,7 +76,7 @@ def evaluate_common(player, env, video_type):
         loop += 1
         if loop % 100 == 0:
             print('Eval : {}step passed'.format(loop))
-        a = player.act(o, evaluate=True)
+        a = player.act(o)
         o,r,done,i = env.step(a)
         score += r
         # This will turn image 90 degrees, but it does not make any difference,
@@ -107,3 +112,61 @@ class EnvWrapper():
 
     def reset(self):
         return {'obs':self.env.reset()}
+
+
+
+def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
+            last_obs, tqdm:tqdm, cum_reward:float, rounds:int,
+            per_round_steps:int, render: bool, need_to_eval:bool,
+            eval_f = None):
+    """
+    1. Fill buffer (if need_to_reset: reset all)
+    2. Train player one step
+    """
+    if reset_buffer:
+        buf.reset_all()
+        explore_n = hp.Batch_size+hp.Buf.N
+    else:
+        buf.reset_continue()
+        explore_n = hp.Batch_size
+    for _ in range(explore_n):
+        action = player.act(last_obs)
+        new_obs, r, d, _ = env.step(action)
+        buf.store_step(last_obs, action, r, d)
+        
+        cum_reward += r
+        per_round_steps += 1
+
+        if render:
+            env.render()
+
+        evaluated = False
+        if d:
+            if render:
+                env.render()
+            rounds += 1
+            tqdm.set_postfix({
+                'Round':rounds,
+                'Steps': per_round_steps,
+                'Reward': cum_reward,
+            })
+            with player.file_writer.as_default():
+                tf.summary.scalar('Reward',cum_reward,rounds)
+                tf.summary.scalar('Reward_step',cum_reward,player.total_steps)
+                tf.summary.scalar('Steps_per_round',per_round_steps,rounds)
+
+            cum_reward = 0
+            per_round_steps = 0
+            if need_to_eval:
+                player.save_model()
+                score = eval_f(player, env, 'mp4')
+                print(f'eval_score:{score}')
+                evaluated = True
+
+            
+            last_obs = env.reset()
+        else:
+            last_obs = new_obs
+    
+
+    return last_obs, cum_reward, rounds, per_round_steps, evaluated
