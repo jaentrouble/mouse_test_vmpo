@@ -5,9 +5,14 @@ class ReplayBuffer():
     """A on-policy replay buffer, no importance sampling
     """
 
-    def __init__(self, observation_space):
+    def __init__(self, observation_space, need_next_obs=False):
         """
         Stores observation space in uint8 dtype
+
+        Args
+        ----
+        need_next_obs : bool
+            If using ICM, it needs sp_batch to guess next state
         """
         self.obs_names = list(observation_space.spaces)
         self.obs_buffer = {}
@@ -47,7 +52,7 @@ class ReplayBuffer():
         self.reward_buffer.append(reward)
         self.done_buffer.append(done)
 
-    def sample(self):
+    def sample(self, need_next_obs=False):
         N = self.N
         batch_size = len(self.reward_buffer) - N
 
@@ -73,14 +78,23 @@ class ReplayBuffer():
             obs[name] = np.array(buf[:batch_size])
         nth_obs = {}
         for name, buf in self.obs_buffer.items():
-            nth_obs[name] = np.array(buf[N:])
+            nth_obs[name] = np.array(buf[N:batch_size+N])
+
         actions = np.array(self.action_buffer[:batch_size])
+
+        if need_next_obs:
+            next_obs = {}
+            for name, buf in self.obs_buffer.items():
+                next_obs[name] = np.array(buf[1:batch_size+1])
+        else :
+            next_obs = None
 
         return (obs, 
                 actions, 
                 cum_rewards, 
                 cum_dones,
-                nth_obs,)
+                nth_obs,
+                next_obs)
 
     def reset_continue(self):
         """

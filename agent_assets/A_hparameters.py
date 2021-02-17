@@ -1,10 +1,6 @@
-Buffer_size = 200000
-Learn_start = 20000
-Batch_size = 32
+Batch_size = 192
 Target_update = 100
-Target_update_tau = 1e-1
 Q_discount = 0.99
-Train_epoch = 1
 
 Actor_activation = 'tanh'
 
@@ -18,10 +14,18 @@ class Lr():
         self.grad_clip = None
 
 lr = {
+    'common' : Lr(),
     'actor' : Lr(),
     'critic' : Lr(),
     'encoder' : Lr(),
 }
+lr['common'].halt_steps = 0
+lr['common'].start = 1e-4
+lr['common'].end = 1e-4
+lr['common'].nsteps = 2000000
+lr['common'].epsilon = 1e-2
+lr['common'].grad_clip = 1.0
+
 lr['actor'].halt_steps = 0
 lr['actor'].start = 0.001
 lr['actor'].end = 0.00005
@@ -46,13 +50,6 @@ lr['encoder'].grad_clip = 1.0
 lr['forward'] = lr['encoder']
 lr['inverse'] = lr['encoder']
 
-OUP_damping = 0.15
-OUP_stddev_start=0.2
-OUP_stddev_end = 0.05
-OUP_stddev_nstep = 500000
-# In range of [-1, 1]
-OUP_noise_max = 0.5
-
 IQN_ENABLE = True
 IQN_SUPPORT = 64
 IQN_COS_EMBED = 64
@@ -60,6 +57,11 @@ IQN_COS_EMBED = 64
 ICM_ENABLE = True
 ICM_intrinsic = 1.0
 ICM_loss_forward_weight = 0.2
+
+VMPO_eps_eta = 1e-1
+VMPO_eps_alpha_mu = 1e-2
+VMPO_eps_alpha_sig = 1e-5
+
 
 class _Buf():
     def __init__(self):
@@ -71,4 +73,5 @@ Model_save = 200000
 
 histogram = 100000
 log_per_steps = 100
+log_grad_per_steps = 1
 

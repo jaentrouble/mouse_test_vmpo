@@ -4,13 +4,8 @@ from tensorflow.keras import layers
 import agent_assets.A_hparameters as hp
 from datetime import datetime
 from os import path, makedirs
-import random
-import cv2
 import numpy as np
 from agent_assets.replaybuffer import ReplayBuffer
-from agent_assets.mousemodel import QModel
-import pickle
-from tqdm import tqdm
 from tensorflow.keras import mixed_precision
 from functools import partial
 import tensorflow_probability as tfp
@@ -25,13 +20,12 @@ keras.backend.clear_session()
 class Player():
     """A agent class which plays the game and learn.
 
-    Algorithms
-    ----------
-    DDPG
-    Prioritized sampling
+    Main Algorithm
+    --------------
+    V-MPO
     """
-    def __init__(self, observation_space, action_space, model_f, tqdm, m_dir=None,
-                 log_name=None, start_step=0, start_round=0, mixed_float=False):
+    def __init__(self, observation_space, action_space, model_f, m_dir=None,
+                 log_name=None, start_step=0, mixed_float=False):
         """
         Parameters
         ----------
@@ -44,8 +38,6 @@ class Player():
             A function that returns actor, critic models. 
             It should take obeservation space and action space as inputs.
             It should not compile the model.
-        tqdm : tqdm.tqdm
-            A tqdm object to update every step.
         m_dir : str
             A model directory to load the model if there's a model to load
         log_name : str
@@ -56,8 +48,6 @@ class Player():
             m_dir, but will record as it is the first training.
         start_step : int
             Total step starts from start_step
-        start_round : int
-            Total round starts from start_round
         mixed_float : bool
             Whether or not to use mixed precision
         """
@@ -66,9 +56,7 @@ class Player():
         print('Model directory : {}'.format(m_dir))
         print('Log name : {}'.format(log_name))
         print('Starting from step {}'.format(start_step))
-        print('Starting from round {}'.format(start_round))
         print(f'Use mixed float? {mixed_float}')
-        self.tqdm = tqdm
         self.action_space = action_space
         self.action_range = action_space.high - action_space.low
         self.action_shape = action_space.shape
@@ -78,9 +66,13 @@ class Player():
             policy = mixed_precision.Policy('mixed_float16')
             mixed_precision.set_global_policy(policy)
 
-
-        # Ornstein-Uhlenbeck process
-        self.last_oup = 0
+        # V-MPO variables
+        self.eta = tf.Variable(1.0, trainable=True, name='eta',dtype='float32')
+        self.alpha_mu = tf.Variable(1.0, trainable=True, name='alpha_mu',
+                                    dtype='float32')
+        self.alpha_sig = tf.Variable(1.0, trainable=True, name='alpha_sig',
+                                    dtype='float32')
+        
 
         #Inputs
         if hp.ICM_ENABLE:
@@ -101,6 +93,18 @@ class Player():
             }
         targets = ['actor', 'critic']
 
+        # Common ADAM optimizer; in V-MPO loss is merged together
+        common_lr = tf.function(partial(self._lr, 'common'))
+        self.common_optimizer = keras.optimizers.Adam(
+            learning_rate=common_lr,
+            epsilon=hp.lr['common'].epsilon,
+            global_clipnorm=hp.lr['common'].grad_clip,
+        )
+        if self.mixed_float:
+            self.common_optimizer = mixed_precision.LossScaleOptimizer(
+                self.common_optimizer
+            )
+
         for name, model in self.models.items():
             lr = tf.function(partial(self._lr, name))
             optimizer = keras.optimizers.Adam(
@@ -114,19 +118,19 @@ class Player():
                 )
             model.compile(optimizer=optimizer)
             model.summary()
+        
+        # Load model if specified
         if m_dir is not None:
             for name, model in self.models.items():
                 model.load_weights(path.join(m_dir,name))
             print(f'model loaded : {m_dir}')
 
+        # Initialize target model
         self.t_models = {}
         for name in targets:
             model = self.models[name]
             self.t_models[name] = keras.models.clone_model(model)
             self.t_models[name].set_weights(model.get_weights())
-
-        self.buffer = ReplayBuffer(hp.Buffer_size, self.observation_space,
-                                    self.action_space)
 
         # File writer for tensorboard
         if log_name is None :
@@ -141,10 +145,6 @@ class Player():
         # Scalars
         self.start_training = False
         self.total_steps = tf.Variable(start_step, dtype=tf.int64)
-        self.current_steps = 1
-        # self.score = 0
-        self.rounds = start_round
-        self.cumreward = 0
         
         # Savefile folder directory
         if m_dir is None :
@@ -174,15 +174,6 @@ class Player():
                     (tf.cast(effective_steps,tf.float32)/hp.lr[name].nsteps))
             return new_lr
 
-    @property
-    @tf.function
-    def oup_stddev(self):
-        if tf.greater(self.total_steps, hp.OUP_stddev_nstep) :
-            return hp.OUP_stddev_end
-        else:
-            return tf.cast(hp.OUP_stddev_start+\
-                (hp.OUP_stddev_end-hp.OUP_stddev_start)*\
-                (self.total_steps/hp.OUP_stddev_nstep),dtype=tf.float32)
 
     @tf.function
     def pre_processing(self, observation:dict):
@@ -214,11 +205,11 @@ class Player():
         return action
 
 
-    def act_batch(self, before_state, evaluate=False):
+    def act_batch(self, before_state):
         action = self.choose_action(before_state)
         return action.numpy()
         
-    def act(self, before_state, evaluate=False):
+    def act(self, before_state):
         """
         Will squeeze axis=0 if Batch_num = 1
         If you don't want to squeeze, use act_batch()
@@ -226,67 +217,13 @@ class Player():
         action = self.choose_action(before_state)
         action_np = action.numpy()
         if action_np.shape[0] == 1:
-            if self.total_steps % hp.log_per_steps==0 and not evaluate:
-                tf.summary.scalar('a0', action[0][0], self.total_steps)
-                tf.summary.scalar('a1', action[0][1], self.total_steps)
             return action_np[0]
         else:
-            if self.total_steps % hp.log_per_steps==0 and not evaluate:
-                tf.summary.scalar('a0', action[0], self.total_steps)
-                tf.summary.scalar('a1', action[1], self.total_steps)
             return action_np
 
 
     @tf.function
-    def oup_noise(self, action):
-        """
-        Add Ornstein-Uhlenbeck noise to action
-        """
-        noise = (1 - hp.OUP_damping)*self.last_oup + \
-                tf.random.normal(
-                    shape=self.action_shape, 
-                    mean=0.0,
-                    stddev=self.oup_stddev,
-                )*self.action_range
-        noise = tf.clip_by_value(
-            noise,
-            -hp.OUP_noise_max*self.action_range/2,
-            hp.OUP_noise_max*self.action_range/2,
-        )
-        self.last_oup = noise
-        noised_action = action + noise
-        noised_action = tf.clip_by_value(
-            noised_action,
-            self.action_space.low,
-            self.action_space.high,
-        )
-        return noised_action
-
-    @tf.function
-    def normal_noise(self, action):
-        """
-        Add Normal noise to action (independent to past noise)
-        """
-        noise = tf.random.normal(
-            shape=self.action_shape,
-            mean=0.0,
-            stddev = self.oup_stddev
-        )*self.action_range
-        noise = tf.clip_by_value(
-            noise,
-            -hp.OUP_noise_max*self.action_range/2,
-            hp.OUP_noise_max*self.action_range/2,
-        )
-        noised_action = action + noise
-        noised_action = tf.clip_by_value(
-            noised_action,
-            self.action_space.low,
-            self.action_space.high,
-        )
-        return noised_action
-
-    @tf.function
-    def train_step(self, o, r, d, a, sp_batch, sn_batch, weights):
+    def train_step(self, o, r, d, a, sn_batch, sp_batch=None):
         """
         All inputs are expected to be preprocessed
         """
@@ -347,48 +284,41 @@ class Player():
         ###################################################### ICM END
 
 
-        # next Q values from t_critic to evaluate
-        t_action_raw = self.t_models['actor'](sn_batch, training=False)
-        t_action = self.normal_noise(t_action_raw)
+        with tf.GradientTape() as tape:
+            ###################################################### IQN START
+            if hp.IQN_ENABLE:
+                with tape.stop_recording():
+                    tau = tf.random.uniform([batch_size, hp.IQN_SUPPORT])
+                    tau_inv = 1.0 - tau
+                    nth_critic_input = sn_batch.copy()
+                    # add tau to input
+                    nth_critic_input['tau'] = tau
+                    # In On-Policy, on-line critic is used to calculate target
+                    nth_support = self.models['critic'](
+                        nth_critic_input, 
+                        training=False,
+                    )
+                    # Shape (batch, support)
+                    G = r[...,tf.newaxis] + \
+                        tf.cast(tf.math.logical_not(d),
+                        tf.float32)[...,tf.newaxis]*\
+                        (hp.Q_discount**hp.Buf.N) * \
+                        nth_support
 
-        t_critic_input = sn_batch.copy()
-        t_critic_input['action'] = t_action
-
-        ###################################################### IQN START
-        if hp.IQN_ENABLE:
-            tau = tf.random.uniform([batch_size, hp.IQN_SUPPORT])
-            tau_inv = 1.0 - tau
-            # add tau to input
-            t_critic_input['tau'] = tau
-            nth_support = self.t_models['critic'](
-                t_critic_input, 
-                training=False,
-            )
-            # Shape (batch, support)
-            critic_target = r[...,tf.newaxis] + \
-                            tf.cast(tf.math.logical_not(d),
-                                    tf.float32)[...,tf.newaxis]*\
-                            (hp.Q_discount**hp.Buf.N) * \
-                            nth_support
-
-            # First update critic
-            with tf.GradientTape() as critic_tape:
-                # add action to input
                 critic_input = o.copy()
-                critic_input['action'] = a
                 critic_input['tau'] = tau
                 support = self.models['critic'](
                     critic_input,
                     training=True,
                 )
                 # For logging
-                q = tf.math.reduce_mean(support, axis=-1)
+                v = tf.math.reduce_mean(support, axis=-1)
                 # Shape (batch, support, support)
                 # One more final axis, because huber reduces one final axis
                 huber_loss = \
-                    keras.losses.huber(critic_target[...,tf.newaxis,tf.newaxis],
+                    keras.losses.huber(G[...,tf.newaxis,tf.newaxis],
                                     support[:,tf.newaxis,:,tf.newaxis])
-                mask = (critic_target[...,tf.newaxis] -\
+                mask = (G[...,tf.newaxis] -\
                             support[:,tf.newaxis,:]) >= 0.0
                 tau_expand = tau[:,tf.newaxis,:]
                 tau_inv_expand = tau_inv[:,tf.newaxis,:]
@@ -400,195 +330,177 @@ class Player():
                     tf.reduce_sum(raw_loss, axis=-1),
                     axis=-1
                 )
-                critic_loss = tf.math.reduce_mean(
-                                      weights * critic_unweighted_loss)
-                critic_loss_original = critic_loss
-                if self.mixed_float:
-                    critic_loss = self.models['critic'].optimizer\
-                                                       .get_scaled_loss(
-                                                            critic_loss)
-        ###################################################### IQN END
+            ###################################################### IQN END
 
-        ###################################################### DDPG START
-        else:
-            nth_q = self.t_models['critic'](
-                t_critic_input,
-                training=False
-            )
-            critic_target = r + \
-                            tf.cast(tf.math.logical_not(d),tf.float32) *\
-                            (hp.Q_discount**hp.Buf.N) *\
-                            nth_q
-
-            # Update Critic
-            with tf.GradientTape() as critic_tape:
-                critic_input = o.copy()
-                critic_input['action'] = a
-                q = self.models['critic'](
-                    critic_input,
+            ###################################################### non-IQN START
+            else:
+                with tape.stop_recording():
+                    nth_v = self.models['critic'](
+                        sn_batch,
+                        training=False
+                    )
+                    G = r +\
+                        tf.cast(tf.math.logical_not(d),tf.float32) *\
+                        (hp.Q_discount**hp.Buf.N) *\
+                        nth_v
+                v = self.models['critic'](
+                    o,
                     training=True,
                 )
-                critic_unweighted_loss = tf.math.square(q-critic_target)
-                critic_loss = tf.math.reduce_mean(
-                                weights * critic_unweighted_loss)
-                critic_loss_original = critic_loss
-                if self.mixed_float:
-                    critic_loss = self.models['critic'].optimizer\
-                                                       .get_scaled_loss(
-                                                           critic_loss
-                                                       )
-        ###################################################### DDPG END
+                critic_unweighted_loss = tf.math.square(v-G)
+            ###################################################### non-IQN END
+
+            L_V = tf.math.reduce_mean(critic_unweighted_loss)/2
+
+            with tape.stop_recording():
+                if hp.IQN_ENABLE:
+                    G = tf.reduce_mean(G, axis=-1)
+                v_target = self.t_models['critic'](
+                    o,
+                    training=False,
+                )
+                # (B,)
+                adv_target = G - v_target
+                mu_t, sig_t = self.t_models['actor'](o, training=False)
+                target_dist = tfp.distributions.MultivariateNormalTril(
+                    loc=mu_t, scale_tril=sig_t, name='target_dist'
+                )
+            mu, sig = self.models['actor'](o, training=True)
+            online_dist = tfp.distributions.MultivariateNormalTril(
+                loc=mu, scale_tril=sig, name='online_dist'
+            )
+            online_logprob = online_dist.log_prob(a)
+            
+            # Top half advantages
+            top_i = tf.argsort(adv_target)[:tf.shape(adv_target)[0]//2]
+            adv_top_half = tf.gather(adv_target, top_i)
+            online_logprob_top_half = tf.gather(online_logprob, top_i)
+            # (B/2,)
+            phi = tf.nn.softmax(adv_top_half/tf.stop_gradient(self.eta))
+            L_PI = tf.math.reduce_mean(-phi * online_logprob_top_half)
+            L_ETA = self.eta*hp.VMPO_eps_eta + \
+                    self.eta*tf.math.log(tf.reduce_mean(tf.math.exp(
+                        adv_top_half/self.eta
+                    )))
+            
+            online_dist_mu = tfp.distributions.MultivariateNormalTril(
+                loc=mu, scale_tril=sig_t, name='online_dist_mu'
+            )
+            online_dist_sig = tfp.distributions.MultivariateNormalTril(
+                loc=mu_t, scale_tril=sig, name='online_dist_sig'
+            )
+
+            KL_mu = tfp.distributions.kl_divergence(
+                target_dist, online_dist_mu, allow_nan_stats=False,
+            )
+            KL_sig = tfp.distributions.kl_divergence(
+                target_dist, online_dist_sig, allow_nan_stats=False,
+            )
+
+            L_A_mu = tf.mean(
+                self.alpha_mu*(hp.VMPO_eps_alpha_mu - tf.stop_gradient(KL_mu))
+                + tf.stop_gradient(self.alpha_mu)*KL_mu
+            )
+            L_A_sig = tf.mean(
+                self.alpha_sig*(hp.VMPO_eps_alpha_sig-tf.stop_gradient(KL_sig))
+                + tf.stop_gradient(self.alpha_sig)*KL_sig
+            )
+
+            loss = L_V + L_PI + L_ETA + L_A_mu + L_A_sig
+            original_loss = loss
+            if self.mixed_float:
+                loss = self.common_optimizer.get_scaled_loss(loss)
 
         if self.total_steps % hp.log_per_steps==0:
-            tf.summary.scalar('Critic Loss', critic_loss_original, self.total_steps)
-            tf.summary.scalar('MaxQ', tf.reduce_max(q), self.total_steps)
+            tf.summary.scalar('L_V', L_V, self.total_steps)
+            tf.summary.scalar('L_pi', L_PI, self.total_steps)
+            tf.summary.scalar('L_eta', L_ETA, self.total_steps)
+            tf.summary.scalar('L_alpha_mu', L_A_mu, self.total_steps)
+            tf.summary.scalar('L_alpha_sig', L_A_sig, self.total_steps)
+            tf.summary.scalar('Total_loss',original_loss, self.total_steps)
+            tf.summary.scalar('MaxV', tf.reduce_max(v), self.total_steps)
 
         critic_vars = self.models['critic'].trainable_weights
+        actor_vars = self.models['actor'].traninable_weights
+        vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
 
-        critic_gradients = critic_tape.gradient(critic_loss, critic_vars)
+        all_vars = critic_vars+actor_vars+vmpo_vars
+
+        all_gradients = tape.gradient(loss, all_vars)
         if self.mixed_float:
-            critic_gradients = \
-                self.models['critic'].optimizer.get_unscaled_gradients(
-                    critic_gradients
+            all_gradients = \
+                self.common_optimizer.get_unscaled_gradients(
+                    all_gradients
                 )
 
-        self.models['critic'].optimizer.apply_gradients(
-            zip(critic_gradients, critic_vars)
+        self.common_optimizer.apply_gradients(
+            zip(all_gradients, all_vars)
         )
-
-        # Then update actor
-        with tf.GradientTape() as actor_tape:
-            action = self.models['actor'](o, training=True)
-            # change action
-            critic_input = o.copy()
-            critic_input['action'] = action
-            ############################################# IQN START
-            if hp.IQN_ENABLE:
-                tau = tf.random.uniform([batch_size, hp.IQN_SUPPORT])
-                critic_input['tau'] = tau
-                # Shape (batch, support)
-                support = self.models['critic'](
-                    critic_input,
-                    training=False,
-                )
-                # In IQN, q is mean of all supports
-                q = tf.reduce_mean(support, axis=-1)
-            ############################################# IQN END
-
-            ############################################# DDPG START
-            else:
-                q = self.models['critic'](
-                    critic_input,
-                    training=False,
-                )
-            ############################################# DDPG END
-            # Actor needs to 'ascend' gradient
-            J = (-1.0) * tf.reduce_mean(q)
-            if self.mixed_float:
-                J = self.models['actor'].optimizer.get_scaled_loss(J)
-
-        actor_vars = self.models['actor'].trainable_weights
-
-        actor_gradients = actor_tape.gradient(J, actor_vars)
-        if self.mixed_float:
-            actor_gradients = \
-                self.models['actor'].optimizer.get_unscaled_gradients(
-                    actor_gradients
-                )
-
-        self.models['actor'].optimizer.apply_gradients(
-            zip(actor_gradients, actor_vars)
-        )
-
-        tf.summary.scalar(
-            'critic_grad_norm',
-            tf.linalg.global_norm(critic_gradients),
-            step=self.total_steps,
-        )
-        tf.summary.scalar(
-            'actor_grad_norm',
-            tf.linalg.global_norm(actor_gradients),
-            step=self.total_steps,
-        )
-
-        priority = (critic_unweighted_loss+hp.Buf.epsilon)**hp.Buf.alpha
-        return priority
+        if self.total_steps % hp.log_grad_per_steps == 0:
+            tf.summary.scalar(
+                'critic_grad_norm',
+                tf.linalg.global_norm(all_gradients[:len(critic_vars)]),
+                step=self.total_steps,
+            )
+            tf.summary.scalar(
+                'actor_grad_norm',
+                tf.linalg.global_norm(all_gradients[len(critic_vars):-3]),
+                step=self.total_steps,
+            )
+            tf.summary.scalar(
+                'eta_grad',
+                tf.norm(all_gradients[-3]),
+                step=self.total_steps,
+            )
+            tf.summary.scalar(
+                'alpha_mu_grad',
+                tf.norm(all_gradients[-2]),
+                step=self.total_steps,
+            )
+            tf.summary.scalar(
+                'alpha_sig_grad',
+                tf.norm(all_gradients[-1]),
+                step=self.total_steps,
+            )
 
 
-    def step(self, before, action, reward, done, info):
-        self.buffer.store_step(before, action, reward, done)
-        self.tqdm.update()
-        # Record here, so that it won't record when evaluating
-        self.cumreward += reward
+    def step(self, buf:ReplayBuffer):
         if self.total_steps % hp.log_per_steps==0:
             for name in self.models:
                 tf.summary.scalar(f'lr_{name}',self._lr(name),self.total_steps)
-        if done:
-            tf.summary.scalar('Reward', self.cumreward, self.rounds)
-            tf.summary.scalar('Reward_step', self.cumreward, self.total_steps)
-            tf.summary.scalar('Steps_per_round',self.current_steps,self.rounds)
-            info_dict = {
-                'Round':self.rounds,
-                'Steps':self.current_steps,
-                'Reward':self.cumreward,
-            }
-            self.tqdm.set_postfix(info_dict)
-            self.current_steps = 0
-            self.cumreward = 0
-            self.rounds += 1
 
         if self.total_steps % hp.histogram == 0:
             for model in self.models.values():
                 for var in model.trainable_weights:
                     tf.summary.histogram(var.name, var, step=self.total_steps)
 
-        if self.buffer.num_in_buffer < hp.Learn_start :
-            self.tqdm.set_description(
-                f'filling buffer'
-                f'{self.buffer.num_in_buffer}/{hp.Learn_start}'
-            )
-
-        else :
-            if self.start_training == False:
-                self.tqdm.set_description()
-                self.start_training = True
-            s_batch, a_batch, r_batch, d_batch, sp_batch, sn_batch, \
-                     indices, weights = self.buffer.sample(hp.Batch_size)
-            s_batch = self.pre_processing(s_batch)
+        s_batch, a_batch, r_batch, d_batch, sn_batch, sp_batch \
+            = buf.sample(need_next_obs=hp.ICM_ENABLE)
+        s_batch = self.pre_processing(s_batch)
+        sn_batch = self.pre_processing(sn_batch)
+        if hp.ICM_ENABLE:
             sp_batch = self.pre_processing(sp_batch)
-            sn_batch = self.pre_processing(sn_batch)
-            # tf_total_steps = tf.constant(self.total_steps, dtype=tf.int64)
-            weights = tf.convert_to_tensor(weights, dtype=tf.float32)
 
-            data = (
-                s_batch,
-                r_batch, 
-                d_batch, 
-                a_batch, 
-                sp_batch,
-                sn_batch,
-                weights,
-            )
+        # sp_batch is only used with ICM enabled
+        data = (
+            s_batch,
+            r_batch, 
+            d_batch, 
+            a_batch, 
+            sn_batch,
+            sp_batch,
+        )
 
-            new_priors = self.train_step(*data).numpy()
-            self.buffer.update_prior_batch(indices, new_priors)
+        self.train_step(*data)
 
-            # Soft target update
-            if self.total_steps % hp.Target_update == 0:
-                for t_model_name in self.t_models:
-                    model = self.models[t_model_name]
-                    t_model = self.t_models[t_model_name]
-                    model_w = model.get_weights()
-                    t_model_w = t_model.get_weights()
-                    new_w = []
-                    for mw, tw in zip(model_w, t_model_w):
-                        nw = hp.Target_update_tau * mw + \
-                             (1-hp.Target_update_tau) * tw
-                        new_w.append(nw)
-                    t_model.set_weights(new_w)
+        # Hard Target update
+        if self.total_steps % hp.Target_update == 0:
+            for t_model_name in self.t_models:
+                model = self.models[t_model_name]
+                t_model = self.t_models[t_model_name]
+                t_model.set_weights(model.get_weights())
 
         self.total_steps.assign_add(1)
-        self.current_steps += 1
 
     def save_model(self):
         """
