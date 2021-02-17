@@ -5,7 +5,7 @@ import numpy as np
 from Agent import Player
 import agent_assets.agent_models as am
 from agent_assets import tools
-from agent_assets.tools import one_step
+from agent_assets.tools import k_steps
 import agent_assets.A_hparameters as hp
 from tqdm import tqdm
 import argparse
@@ -110,7 +110,7 @@ if args.profile:
     for step in range(20):
         last_obs, cum_reward, rounds, act_steps,\
         per_round_steps, evaluated, reset_buffer\
-            = one_step(
+            = k_steps(
                 reset_buffer,
                 buf,
                 player,
@@ -131,7 +131,7 @@ if args.profile:
         for step in range(5):
             last_obs, cum_reward, rounds, act_steps,\
             per_round_steps, evaluated, reset_buffer\
-                = one_step(
+                = k_steps(
                     reset_buffer,
                     buf,
                     player,
@@ -153,7 +153,7 @@ if args.profile:
             need_to_eval = True
         last_obs, cum_reward, rounds, act_steps,\
         per_round_steps, evaluated, reset_buffer\
-            = one_step(
+            = k_steps(
                 reset_buffer,
                 buf,
                 player,
@@ -178,7 +178,7 @@ else :
             need_to_eval = True
         last_obs, cum_reward, rounds, act_steps,\
         per_round_steps, evaluated, reset_buffer\
-            = one_step(
+            = k_steps(
                 reset_buffer,
                 buf,
                 player,
