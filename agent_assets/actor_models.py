@@ -53,7 +53,7 @@ def actor_vmpo_dense(observation_space, action_space, encoder_f):
         chol_tri, diag_i_batch, chol_diags, name='actor_sigma_chol'
     )
     sigma_chol = layers.Activation('linear',dtype='float32',
-                                    name='actor_sig_float32')
+                                    name='actor_sig_float32')(sigma_chol)
 
 
 
