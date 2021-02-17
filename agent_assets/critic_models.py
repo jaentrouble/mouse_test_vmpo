@@ -4,26 +4,24 @@ from tensorflow.keras import layers
 from . import A_hparameters as hp
 import numpy as np
 """
-Critic models takes three inputs:
+Q models take two inputs:
     1. encoded states
     2. actions
 and returns an expected future reward (a single float).
 
+V models take one input:
+    1. encoded states
+
 Critic model functions should take following arguments:
     1. observation_space
-    2. action_space : Box
+    2. action_space : Box (Even if the model is V and not need action)
     3. encoder_f
 """
 
 
-def critic_simple_dense(observation_space, action_space, encoder_f):
-    action_input = keras.Input(action_space.shape,
-                            name='action')
+def critic_v_dense(observation_space, action_space, encoder_f):
     encoded_state, encoder_inputs = encoder_f(observation_space)
-    s = layers.Flatten(name='critic_flatten_state')(encoded_state)
-    a = layers.Flatten(name='critic_flatten_action')(action_input)
-
-    x = layers.Concatenate(name='critic_concat_action_state')([s,a])
+    x = layers.Flatten(name='critic_flatten_state')(encoded_state)
 
     x = layers.Dense(256, activation='relu',
                      name='critic_dense1')(x)
@@ -38,30 +36,21 @@ def critic_simple_dense(observation_space, action_space, encoder_f):
                                 name='critic_float32')(outputs)
 
     model = keras.Model(
-        inputs=[action_input,] + encoder_inputs, 
+        inputs=encoder_inputs, 
         outputs=outputs,
         name='critic'
     )
 
     return model
 
-
-def critic_dense_iqn(observation_space, action_space, encoder_f):
+def critic_v_dense_iqn(observation_space, action_space, encoder_f):
     """
     IQN model takes one more input : 
         tau : tf.Tensor
             shape (batch, IQN_SUPPORT)
     """
-    action_range = action_space.high - action_space.low
-    action_middle = (action_space.low + action_space.high)/2
-
-    action_input = keras.Input(action_space.shape,
-                            name='action')
-    normalized_action = (action_input - action_middle)*2/action_range
     encoded_state, encoder_inputs = encoder_f(observation_space)
-    s = layers.Flatten(name='critic_flatten_state')(encoded_state)
-    a = layers.Flatten(name='critic_flatten_action')(normalized_action)
-    x = layers.Concatenate(name='critic_concat_action_state')([s,a])
+    x = layers.Flatten(name='critic_flatten_state')(encoded_state)
 
     # Shape (batch, 256)
     x = layers.Dense(256, activation='relu',
@@ -100,9 +89,10 @@ def critic_dense_iqn(observation_space, action_space, encoder_f):
                                 name='critic_float32')(outputs)
 
     model = keras.Model(
-        inputs=[action_input,tau_input] + encoder_inputs, 
+        inputs=[tau_input] + encoder_inputs, 
         outputs=outputs,
         name='critic'
     )
 
     return model
+

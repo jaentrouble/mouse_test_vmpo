@@ -2,29 +2,33 @@ import numpy as np
 import agent_assets.A_hparameters as hp
 
 class ReplayBuffer():
-    """A replay buffer with Prioritized sampling.
-    
+    """A on-policy replay buffer, no importance sampling
     """
 
-    def __init__(self, buffer_size, observation_space:dict, action_space):
+    def __init__(self, observation_space, action_space):
         """
         Stores observation space in uint8 dtype
         """
-        self.size = buffer_size
+        self.obs_space = observation_space
+        self.action_space = action_space
+
+        self.obs_names = list(observation_space.spaces)
         self.obs_buffer = {}
-        for name, space in observation_space.spaces.items():
-            shape = space.shape
-            self.obs_buffer[name] = np.zeros([buffer_size]+list(shape),
-                                            dtype=space.dtype)
-        self.action_buffer = np.zeros(
-            [buffer_size]+list(action_space.shape), 
-            dtype=action_space.dtype,
-        )
-        self.reward_buffer = np.zeros(buffer_size, dtype=np.float32)
-        self.done_buffer = np.zeros(buffer_size, dtype=np.bool)
-        self.prior_tree = np.zeros(2*self.size - 1)
-        self.next_idx = 0
-        self.num_in_buffer = 0
+        for name in self.obs_names:
+            self.obs_buffer[name] = []
+        self.action_buffer = []
+        self.reward_buffer = []
+        self.done_buffer = []
+        self.N = hp.Buf.N
+
+    @property
+    def N(self):
+        return self._N
+
+    @N.setter
+    def N(self, N):
+        self._N = N
+        self.discount_window = hp.Q_discount**np.arange(N)
 
     def store_step(self, observation:dict, action, reward, done) :
         """Give the original observation in uint8
@@ -40,125 +44,78 @@ class ReplayBuffer():
         done
             d_t
         """
-        if self.next_idx == self.size-1:
-            self._recalculate_sum()
         for name, obs in observation.items() :
-            self.obs_buffer[name][self.next_idx] = obs
-        self.action_buffer[self.next_idx] = action
-        self.reward_buffer[self.next_idx] = reward
-        self.done_buffer[self.next_idx] = done
-        self._update_prior(self.next_idx, self.max_prior)
-        self.next_idx = (self.next_idx +1) % self.size
-        self.num_in_buffer = min(self.size, self.num_in_buffer +1)
+            self.obs_buffer[name].append(obs)
+        self.action_buffer.append(action)
+        self.reward_buffer.append(reward)
+        self.done_buffer.append(done)
 
-    @property
-    def max_prior(self):
-        if self.num_in_buffer==0:
-            mp = 1.0
-        else:
-            mp = np.max(
-                self.prior_tree[self.size-1:self.size+self.num_in_buffer-1])
-        return mp
+    def sample(self, need_next_obs=False):
+        N = self.N
+        batch_size = len(self.reward_buffer) - N
 
-    def _to_tree_idx(self, idx):
-        """Convert Data idx into tree idx"""
-        return idx + self.size - 1
+        # Cumulative N steps reward
+        cum_rewards = []
+        cum_dones = []
+        for i in range(batch_size):
+            # Always need 'current' reward, current done effects next reward
+            done_mask = self.done_buffer[i:i+N-1]
+            done_mask.insert(0, False)
+            done_mask = np.cumsum(done_mask)
+            cum_reward = self.discount_window * self.reward_buffer[i:i+N]\
+                                              * np.logical_not(done_mask)
+            cum_rewards.append(np.sum(cum_reward))
 
-    def _to_data_idx(self, idx):
-        """Convert Tree idx into data idx"""
-        return idx - self.size + 1
+            cum_dones.append(np.any(self.done_buffer[i:i+N]))
 
-    def _update_prior(self, idx, new_priority):
-        """Update priority and propagate to parent nodes
-        
-        Parameters
-        ----------
-        idx : int
-            DATA index
-        new_priority
-            New priority to add
-        """
-        tree_idx = self._to_tree_idx(idx)
-        delta = new_priority - self.prior_tree[tree_idx]
+        cum_rewards = np.array(cum_rewards, dtype=np.float32)
+        cum_dones = np.array(cum_dones)
 
-        parent_idx = tree_idx
-        while parent_idx >= 0 :
-            self.prior_tree[parent_idx] += delta
-
-            parent_idx = (parent_idx -1) //2
-
-    def _recalculate_sum(self):
-        """Recalculate all parent nodes
-        """
-        for idx in range(self.size-2,-1,-1):
-            left_child = self.prior_tree[idx*2+1]
-            right_child = self.prior_tree[idx*2+2]
-            self.prior_tree[idx] = left_child + right_child
-
-    def _get_idx_from_s(self, s):
-        """Get tree index from sampled s value"""
-        idx = 0
-        left = 1
-        right = 2
-        while left < len(self.prior_tree):
-            if s <= self.prior_tree[left]:
-                idx = left
-            else:
-                idx = right
-                s -= self.prior_tree[left]
-            left = 2 * idx + 1
-            right = left + 1
-
-        return idx
-
-    def _sample_indices(self, batch_size):
-        total_sum = self.prior_tree[0]
-        step_size = total_sum / batch_size
-        sampled_s = np.linspace(0, total_sum, batch_size, endpoint=False) + \
-                    np.random.random_sample(batch_size)*step_size
-        sampled_i = np.array([self._get_idx_from_s(s) for s in sampled_s])
-        return sampled_i
-
-    def sample(self, batch_size):
-        indices = self._to_data_idx(self._sample_indices(batch_size))
-        next_indices = (indices + 1) % self.size
-        nth_indices = (indices + hp.Buf.N) % self.size
-        obs_sample = {}
-        next_obs_sample = {}
-        nth_obs_sample = {}
+        obs = {}
         for name, buf in self.obs_buffer.items():
-            obs_sample[name] = buf[indices]
-            next_obs_sample[name] = buf[next_indices]
-            nth_obs_sample[name] = buf[nth_indices]
-        action_sample = self.action_buffer[indices]
-        reward_sample = self.reward_buffer[indices]
-        done_sample = self.done_buffer[indices]
-        for n in range(1,hp.Buf.N):
-            indices_ = (indices + n) % self.size
-            reward_sample += np.logical_not(done_sample)\
-                            *(hp.Q_discount**n)\
-                            *self.reward_buffer[indices_]
-            done_sample = np.logical_or(
-                done_sample, self.done_buffer[indices_]
-            )
+            obs[name] = np.array(buf[:batch_size], 
+                                dtype=self.obs_space[name].dtype)
+        nth_obs = {}
+        for name, buf in self.obs_buffer.items():
+            nth_obs[name] = np.array(buf[N:batch_size+N],
+                                    dtype=self.obs_space[name].dtype)
 
-        # alpha is already implemented in Agent's train step
-        IS_weights = (self.num_in_buffer*\
-                    self.prior_tree[self._to_tree_idx(indices)]/\
-                    self.prior_tree[0])**(-hp.Buf.beta)
-        IS_weights = IS_weights / np.max(IS_weights)
+        actions = np.array(self.action_buffer[:batch_size],
+                            dtype=self.action_space.dtype)
 
-        return (obs_sample, 
-                action_sample, 
-                reward_sample, 
-                done_sample,
-                next_obs_sample,
-                nth_obs_sample,
-                indices,
-                IS_weights,
-                )
+        if need_next_obs:
+            next_obs = {}
+            for name, buf in self.obs_buffer.items():
+                next_obs[name] = np.array(buf[1:batch_size+1],
+                                        dtype=self.obs_space[name].dtype)
+        else :
+            next_obs = None
 
-    def update_prior_batch(self, indices, new_priors):
-        """Update batch of priorities"""
-        for i, p in zip(indices, new_priors):
-            self._update_prior(i, p)
+        return (obs, 
+                actions, 
+                cum_rewards, 
+                cum_dones,
+                nth_obs,
+                next_obs)
+
+    def reset_continue(self):
+        """
+        Leave last N unused samples
+        """
+        N = self.N
+        for name, buf in self.obs_buffer.items():
+            self.obs_buffer[name] = buf[-N:]
+        self.action_buffer = self.action_buffer[-N:]
+        self.reward_buffer = self.reward_buffer[-N:]
+        self.done_buffer = self.done_buffer[-N:]
+
+    def reset_all(self):
+        """
+        Clear all buffer
+        """
+        self.obs_buffer = {}
+        for name in self.obs_names:
+            self.obs_buffer[name] = []
+        self.action_buffer = []
+        self.reward_buffer = []
+        self.done_buffer = []

@@ -205,9 +205,3 @@ class MouseEnv_unity(gym.Env) :
             received_bytes += len(data)
         return b''.join(all_data)
 
-
-# Testing
-if __name__ == '__main__' :
-    env = MouseEnv_cl()
-    env.render()
-    a = input()
