@@ -479,6 +479,7 @@ class Player():
 
     def step(self, buf:ReplayBuffer):
         if self.total_steps % hp.log_per_steps==0:
+            tf.summary.scalar(f'lr_common', self._lr('common'),self.total_steps)
             for name in self.models:
                 tf.summary.scalar(f'lr_{name}',self._lr(name),self.total_steps)
 
