@@ -116,7 +116,7 @@ class EnvWrapper():
 
 
 def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
-            last_obs, tqdm:tqdm, cum_reward:float, rounds:int,
+            last_obs, my_tqdm:tqdm, cum_reward:float, rounds:int,
             per_round_steps:int, render: bool, need_to_eval:bool,
             eval_f = None):
     """
@@ -145,7 +145,7 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
             if render:
                 env.render()
             rounds += 1
-            tqdm.set_postfix({
+            my_tqdm.set_postfix({
                 'Round':rounds,
                 'Steps': per_round_steps,
                 'Reward': cum_reward,
@@ -168,6 +168,7 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
         else:
             last_obs = new_obs
     reset_buffer = player.step(buf)
+    my_tqdm.update()
 
     return (last_obs,
             cum_reward,
