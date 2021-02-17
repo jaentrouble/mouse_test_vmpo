@@ -36,8 +36,8 @@ def actor_vmpo_dense(observation_space, action_space, encoder_f):
     mu = mu*action_range/2 + action_middle
     mu = layers.Activation('linear',dtype='float32',
                                          name='actor_mu_float32')(mu)
-
-    chol_flat = layers.Dense((action_num*(action_num-1))//2,
+    
+    chol_flat = layers.Dense((action_num*(action_num+1))//2,
                             activation='linear', name='actor_chol_flat')(x)
     chol_tri = tfp.math.fill_triangular(chol_flat, name='actor_chol_tri')
 
