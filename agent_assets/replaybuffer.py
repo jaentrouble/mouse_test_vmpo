@@ -5,15 +5,13 @@ class ReplayBuffer():
     """A on-policy replay buffer, no importance sampling
     """
 
-    def __init__(self, observation_space):
+    def __init__(self, observation_space, action_space):
         """
         Stores observation space in uint8 dtype
-
-        Args
-        ----
-        need_next_obs : bool
-            If using ICM, it needs sp_batch to guess next state
         """
+        self.obs_space = observation_space
+        self.action_space = action_space
+
         self.obs_names = list(observation_space.spaces)
         self.obs_buffer = {}
         for name in self.obs_names:
@@ -70,22 +68,26 @@ class ReplayBuffer():
 
             cum_dones.append(np.any(self.done_buffer[i:i+N]))
 
-        cum_rewards = np.array(cum_rewards)
+        cum_rewards = np.array(cum_rewards, dtype=np.float32)
         cum_dones = np.array(cum_dones)
 
         obs = {}
         for name, buf in self.obs_buffer.items():
-            obs[name] = np.array(buf[:batch_size])
+            obs[name] = np.array(buf[:batch_size], 
+                                dtype=self.obs_space[name].dtype)
         nth_obs = {}
         for name, buf in self.obs_buffer.items():
-            nth_obs[name] = np.array(buf[N:batch_size+N])
+            nth_obs[name] = np.array(buf[N:batch_size+N],
+                                    dtype=self.obs_space[name].dtype)
 
-        actions = np.array(self.action_buffer[:batch_size])
+        actions = np.array(self.action_buffer[:batch_size],
+                            dtype=self.action_space.dtype)
 
         if need_next_obs:
             next_obs = {}
             for name, buf in self.obs_buffer.items():
-                next_obs[name] = np.array(buf[1:batch_size+1])
+                next_obs[name] = np.array(buf[1:batch_size+1],
+                                        dtype=self.obs_space[name].dtype)
         else :
             next_obs = None
 
