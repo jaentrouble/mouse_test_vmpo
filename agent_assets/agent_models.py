@@ -20,74 +20,34 @@ Every functions should take following two as inputs:
     2. action_space : Box expected
 """
 
-def eye_brain_model(observation_space, action_space):
-    
-    encoder_f = em.encoder_two_eyes
+# def unity_conv_iqn_icm(observation_space, action_space):
+#     encoder_f = em.encoder_simple_conv
 
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
-    
-    critic = cm.critic_simple_dense(observation_space, action_space, encoder_f)
+#     actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
+
+#     critic = cm.critic_dense_iqn(observation_space, action_space, encoder_f)
+
+#     icm_models = ICM.ICM_dense(observation_space, action_space, encoder_f)
+
+#     return actor, critic, icm_models
+
+def unity_conv_vmpo(observation_space, action_space):
+    encoder_f = em.encoder_simple_conv
+
+    actor = am.actor_vmpo_dense(observation_space, action_space, encoder_f)
+
+    critic = cm.critic_v_dense(observation_space, action_space, encoder_f)
 
     return actor, critic
 
-def classic_model(observation_space, action_space):
+def unity_classic_vmpo(observation_space, action_space):
     encoder_f = em.encoder_simple_dense
 
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
+    actor = am.actor_vmpo_dense(observation_space, action_space, encoder_f)
 
-    critic = cm.critic_simple_dense(observation_space,action_space,encoder_f)
-
-    return actor, critic
-
-def unity_res_ddpg(observation_space, action_space):
-    encoder_f = em.encoder_simple_res
-
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
-
-    critic = cm.critic_simple_dense(observation_space,action_space,encoder_f)
+    critic = cm.critic_v_dense(observation_space, action_space, encoder_f)
 
     return actor, critic
-
-def unity_conv_ddpg(observation_space, action_space):
-    encoder_f = em.encoder_simple_conv
-    
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
-
-    critic = cm.critic_simple_dense(observation_space,action_space,encoder_f)
-
-    return actor, critic
-    
-def unity_res_iqn(observation_space, action_space):
-    encoder_f = em.encoder_simple_res
-
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
-
-    critic = cm.critic_dense_iqn(observation_space, action_space, encoder_f)
-
-    return actor, critic
-
-def unity_res_iqn_icm(observation_space, action_space):
-    encoder_f = em.encoder_simple_res
-
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
-
-    critic = cm.critic_dense_iqn(observation_space, action_space, encoder_f)
-
-    icm_models = ICM.ICM_dense(observation_space, action_space, encoder_f)
-
-    return actor, critic, icm_models
-
-def unity_conv_iqn_icm(observation_space, action_space):
-    encoder_f = em.encoder_simple_conv
-
-    actor = am.actor_simple_dense(observation_space, action_space, encoder_f)
-
-    critic = cm.critic_dense_iqn(observation_space, action_space, encoder_f)
-
-    icm_models = ICM.ICM_dense(observation_space, action_space, encoder_f)
-
-    return actor, critic, icm_models
-
 
 if __name__ == '__main__':
     from gym.spaces import Dict, Box
