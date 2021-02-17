@@ -105,24 +105,8 @@ per_round_steps = 0
 
 if args.profile:
     for step in range(20):
-        last_obs, cum_reward, rounds, per_round_steps, _ = one_step(
-            reset_buffer,
-            buf,
-            player,
-            env,
-            last_obs,
-            my_tqdm,
-            cum_reward,
-            rounds,
-            per_round_steps,
-            render,
-            need_to_eval,
-            evaluate_f,
-        )
-
-    with Profile(f'logs/{args.log_name}'):
-        for step in range(5):
-            last_obs, cum_reward, rounds, per_round_steps, _ = one_step(
+        last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+            = one_step(
                 reset_buffer,
                 buf,
                 player,
@@ -134,26 +118,45 @@ if args.profile:
                 per_round_steps,
                 render,
                 need_to_eval,
-                evaluate_f
+                evaluate_f,
             )
+
+    with Profile(f'logs/{args.log_name}'):
+        for step in range(5):
+            last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+                = one_step(
+                    reset_buffer,
+                    buf,
+                    player,
+                    env,
+                    last_obs,
+                    my_tqdm,
+                    cum_reward,
+                    rounds,
+                    per_round_steps,
+                    render,
+                    need_to_eval,
+                    evaluate_f
+                )
     remaining_steps = total_steps - 25
     for step in range(remaining_steps):
         if ((step + 25) % hp.Model_save) == 0 :
             need_to_eval = True
-        last_obs, cum_reward, rounds, per_round_steps, evaluated = one_step(
-            reset_buffer,
-            buf,
-            player,
-            env,
-            last_obs,
-            my_tqdm,
-            cum_reward,
-            rounds,
-            per_round_steps,
-            render,
-            need_to_eval,
-            evaluate_f,
-        )
+        last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+            = one_step(
+                reset_buffer,
+                buf,
+                player,
+                env,
+                last_obs,
+                my_tqdm,
+                cum_reward,
+                rounds,
+                per_round_steps,
+                render,
+                need_to_eval,
+                evaluate_f,
+            )
         if evaluated:
             need_to_eval = False
 
@@ -161,20 +164,21 @@ else :
     for step in range(total_steps):
         if (step>0) and ((step % hp.Model_save) == 0) :
             need_to_eval = True
-        last_obs, cum_reward, rounds, per_round_steps, evaluated = one_step(
-            reset_buffer,
-            buf,
-            player,
-            env,
-            last_obs,
-            my_tqdm,
-            cum_reward,
-            rounds,
-            per_round_steps,
-            render,
-            need_to_eval,
-            evaluate_f,
-        )
+        last_obs, cum_reward, rounds, per_round_steps, evaluated, reset_buffer\
+            = one_step(
+                reset_buffer,
+                buf,
+                player,
+                env,
+                last_obs,
+                my_tqdm,
+                cum_reward,
+                rounds,
+                per_round_steps,
+                render,
+                need_to_eval,
+                evaluate_f,
+            )
         if evaluated:
             need_to_eval = False
 

@@ -167,6 +167,11 @@ def one_step(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
             last_obs = env.reset()
         else:
             last_obs = new_obs
-    
+    reset_buffer = player.step(buf)
 
-    return last_obs, cum_reward, rounds, per_round_steps, evaluated
+    return (last_obs,
+            cum_reward,
+            rounds,
+            per_round_steps,
+            evaluated,
+            reset_buffer)
