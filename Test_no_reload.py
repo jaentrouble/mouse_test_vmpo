@@ -15,14 +15,16 @@ from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 from agent_assets.replaybuffer import ReplayBuffer
 
-ENVIRONMENT = 'Pendulum-v0'
+ENVIRONMENT = 'mouseUnity-v0'
 
 env_kwargs = dict(
+    ip='localhost',
+    port=7777
 )
 
 CLASSIC = True
 
-model_f = am.classic_dense_vmpo
+model_f = am.unity_conv_vmpo
 
 hp.Actor_activation = 'tanh'
 
