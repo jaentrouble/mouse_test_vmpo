@@ -450,7 +450,7 @@ class Player():
                 surrogate2 = tf.clip_by_value(
                     ratios, 1-hp.PPO_eps_clip, 1+hp.PPO_eps_clip
                 ) * adv
-                L_PI = -tf.minimum(surrogate1, surrogate2)
+                L_PI = -tf.reduce_mean(tf.minimum(surrogate1, surrogate2))
 
                 loss = L_V + L_PI
 
