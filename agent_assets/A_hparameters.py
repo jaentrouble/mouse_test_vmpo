@@ -9,6 +9,7 @@ Actor_activation = 'tanh'
 available_algorithms=(
     'V-MPO',
     'PPO',
+    'A2C',
 )
 Algorithm = 'V-MPO'
 
@@ -73,6 +74,9 @@ VMPO_eta_min = 1e-8
 VMPO_alpha_min = 1e-8
 
 PPO_eps_clip = 0.2
+
+A2C_sig_max = 50
+A2C_sig_min = 1e-2
 
 class _Buf():
     def __init__(self):

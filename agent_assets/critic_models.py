@@ -43,6 +43,27 @@ def critic_v_dense(observation_space, action_space, encoder_f):
 
     return model
 
+def critic_v_mini(observation_space, action_space, encoder_f):
+    encoded_state, encoder_inputs = encoder_f(observation_space)
+    x = layers.Flatten(name='critic_flatten_state')(encoded_state)
+
+    x = layers.Dense(64, activation='relu',
+                     name='critic_dense1')(x)
+    x = layers.Dense(1, activation='linear',dtype='float32',
+                           name='critic_dense4')(x)
+    outputs = tf.squeeze(x, name='critic_squeeze')
+    outputs = layers.Activation('linear',dtype=tf.float32,
+                                name='critic_float32')(outputs)
+
+    model = keras.Model(
+        inputs=encoder_inputs, 
+        outputs=outputs,
+        name='critic'
+    )
+
+    return model
+
+
 def critic_v_dense_iqn(observation_space, action_space, encoder_f):
     """
     IQN model takes one more input : 

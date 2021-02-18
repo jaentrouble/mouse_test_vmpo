@@ -68,14 +68,19 @@ class Player():
         
         assert hp.Algorithm in hp.available_algorithms, "Wrong Algorithm!"
 
+        # Special variables
         if hp.Algorithm == 'V-MPO':
-            # V-MPO variables
+            
             self.eta = tf.Variable(1.0, trainable=True, name='eta',dtype='float32')
             self.alpha_mu = tf.Variable(1.0, trainable=True, name='alpha_mu',
                                         dtype='float32')
             self.alpha_sig = tf.Variable(1.0, trainable=True, name='alpha_sig',
                                         dtype='float32')
         
+        elif hp.Algorithm == 'A2C':
+            action_num = tf.reduce_prod(self.action_shape)
+            self.log_sigma = tf.Variable(tf.fill((action_num),0.1),
+                            trainable=True,name='sigma',dtype='float32')
 
         #Inputs
         if hp.ICM_ENABLE:
@@ -199,15 +204,24 @@ class Player():
         """
         processed_state = self.pre_processing(before_state)
         # Policy Gradient methods use old target model to collect data
-        mu, sigma = self.t_models['actor'](processed_state, training=False)
+        
         if hp.Algorithm == 'V-MPO':
+            mu, sigma = self.t_models['actor'](processed_state, training=False)
             action_distrib = tfp.distributions.MultivariateNormalTriL(
                 loc=mu, scale_tril=sigma, name='choose_action_dist'
             )
         elif hp.Algorithm == 'PPO':
+            mu, sigma = self.t_models['actor'](processed_state, training=False)
             action_distrib = tfp.distributions.MultivariateNormalDiag(
                 loc=mu, scale_diag=sigma, name='choose_action_dist'
             )
+        elif hp.Algorithm == 'A2C':
+            mu = self.t_models['actor'](processed_state, training=False)
+            sigma = tf.exp(self.log_sigma)
+            action_distrib = tfp.distributions.MultivariateNormalDiag(
+                loc=mu, scale_diag=sigma, name='choose_action_dist'
+            )
+        
         action = action_distrib.sample()
         return action
 
@@ -453,6 +467,20 @@ class Player():
                 L_PI = -tf.reduce_mean(tf.minimum(surrogate1, surrogate2))
 
                 loss = L_V + L_PI
+            
+            elif hp.Algorithm == 'A2C':
+                mu = self.models['actor'](o, training=True)
+                sigma = tf.exp(self.log_sigma)
+                online_dist = tfp.distributions.MultivariateNormalDiag(
+                    loc=mu, scale_diag=sigma, name='online_dist'
+                )
+                online_logprob = online_dist.log_prob(a)
+
+                adv = G - v
+                
+                L_PI = -tf.reduce_mean(online_logprob*tf.stop_gradient(adv))
+                loss = L_V + L_PI
+
 
             original_loss = loss
             if self.mixed_float:
@@ -465,6 +493,8 @@ class Player():
         if hp.Algorithm == 'V-MPO':
             vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
             all_vars = all_vars+vmpo_vars
+        elif hp.Algorithm == 'A2C':
+            all_vars.append(self.log_sigma)
 
         all_gradients = tape.gradient(loss, all_vars)
         if self.mixed_float:
@@ -485,6 +515,11 @@ class Player():
                 tf.reduce_max([self.alpha_mu, hp.VMPO_alpha_min]))
             self.alpha_sig.assign(
                 tf.reduce_max([self.alpha_sig, hp.VMPO_alpha_min]))
+        elif hp.Algorithm == 'A2C':
+            self.log_sigma.assign(
+                tf.math.log(tf.clip_by_value(tf.exp(self.log_sigma), 
+                            hp.A2C_sig_min, hp.A2C_sig_max))
+            )
 
 
         if self.total_steps % hp.log_per_steps==0:
@@ -505,6 +540,9 @@ class Player():
                                                     self.total_steps)
                 tf.summary.scalar('adv_top_half',tf.reduce_mean(adv_top_half),
                                                 self.total_steps)
+            elif hp.Algorithm == 'A2C':
+                tf.summary.scalar('MaxSigma', 
+                    tf.reduce_max(tf.exp(self.log_sigma)), self.total_steps)
 
 
         if self.total_steps % hp.log_grad_per_steps == 0:
@@ -513,12 +551,12 @@ class Player():
                 tf.linalg.global_norm(all_gradients[:len(critic_vars)]),
                 step=self.total_steps,
             )
-            tf.summary.scalar(
-                'actor_grad_norm',
-                tf.linalg.global_norm(all_gradients[len(critic_vars):-3]),
-                step=self.total_steps,
-            )
             if hp.Algorithm == 'V-MPO':
+                tf.summary.scalar(
+                    'actor_grad_norm',
+                    tf.linalg.global_norm(all_gradients[len(critic_vars):-3]),
+                    step=self.total_steps,
+                )
                 tf.summary.scalar(
                     'eta_grad',
                     tf.norm(all_gradients[-3]),
@@ -534,6 +572,19 @@ class Player():
                     tf.norm(all_gradients[-1]),
                     step=self.total_steps,
                 )
+            elif hp.Algorithm == 'PPO':
+                tf.summary.scalar(
+                    'actor_grad_norm',
+                    tf.linalg.global_norm(all_gradients[len(critic_vars):]),
+                    step=self.total_steps,
+                )
+            elif hp.Algorithm == 'A2C':
+                tf.summary.scalar(
+                    'actor_grad_norm',
+                    tf.linalg.global_norm(all_gradients[len(critic_vars):-1]),
+                    step=self.total_steps,
+                )
+
 
 
     def step(self, buf:ReplayBuffer):
