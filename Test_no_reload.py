@@ -148,7 +148,7 @@ if args.profile:
                     evaluate_f
                 )
     remaining_steps = total_steps - 25
-    while player.total_steps.numpy() < total_steps:
+    while my_tqdm.n < total_steps:
         if ((step + 25) % hp.Model_save) == 0 :
             need_to_eval = True
         last_obs, cum_reward, rounds, act_steps,\
@@ -173,8 +173,8 @@ if args.profile:
             need_to_eval = False
 
 else :
-    while player.total_steps.numpy() < total_steps:
-        step = player.total_steps.numpy()
+    while my_tqdm.n < total_steps:
+        step = my_tqdm.n
         if (step>0) and ((step % hp.Model_save) == 0) :
             need_to_eval = True
         last_obs, cum_reward, rounds, act_steps,\
