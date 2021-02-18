@@ -167,6 +167,7 @@ def k_steps(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
                 score = eval_f(player, env, 'mp4')
                 print(f'eval_score:{score}')
                 evaluated = True
+                need_to_eval = False
 
             
             last_obs = env.reset()
