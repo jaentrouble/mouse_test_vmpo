@@ -22,7 +22,7 @@ env_kwargs = dict(
 
 CLASSIC = True
 
-model_f = am.classic_dense_vmpo
+model_f = am.classic_dense_ppo
 
 hp.Actor_activation = 'tanh'
 
@@ -40,6 +40,8 @@ args = parser.parse_args()
 
 total_steps = int(args.total_steps)
 my_tqdm = tqdm(total=total_steps, dynamic_ncols=True)
+
+hp.Algorithm = 'PPO'
 
 hp.Batch_size = 192
 hp.Buf.N = 64

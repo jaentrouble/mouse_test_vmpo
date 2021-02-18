@@ -65,13 +65,16 @@ class Player():
         if mixed_float:
             policy = mixed_precision.Policy('mixed_float16')
             mixed_precision.set_global_policy(policy)
+        
+        assert hp.Algorithm in hp.available_algorithms, "Wrong Algorithm!"
 
-        # V-MPO variables
-        self.eta = tf.Variable(1.0, trainable=True, name='eta',dtype='float32')
-        self.alpha_mu = tf.Variable(1.0, trainable=True, name='alpha_mu',
-                                    dtype='float32')
-        self.alpha_sig = tf.Variable(1.0, trainable=True, name='alpha_sig',
-                                    dtype='float32')
+        if hp.Algorithm == 'V-MPO':
+            # V-MPO variables
+            self.eta = tf.Variable(1.0, trainable=True, name='eta',dtype='float32')
+            self.alpha_mu = tf.Variable(1.0, trainable=True, name='alpha_mu',
+                                        dtype='float32')
+            self.alpha_sig = tf.Variable(1.0, trainable=True, name='alpha_sig',
+                                        dtype='float32')
         
 
         #Inputs
@@ -195,11 +198,16 @@ class Player():
         Policy part
         """
         processed_state = self.pre_processing(before_state)
-        # V-MPO uses old target model to collect data
-        mu, sigma_chol = self.t_models['actor'](processed_state, training=False)
-        action_distrib = tfp.distributions.MultivariateNormalTriL(
-            loc=mu, scale_tril=sigma_chol, name='choose_action_dist'
-        )
+        # Policy Gradient methods use old target model to collect data
+        mu, sigma = self.t_models['actor'](processed_state, training=False)
+        if hp.Algorithm == 'V-MPO':
+            action_distrib = tfp.distributions.MultivariateNormalTriL(
+                loc=mu, scale_tril=sigma, name='choose_action_dist'
+            )
+        elif hp.Algorithm == 'PPO':
+            action_distrib = tfp.distributions.MultivariateNormalDiag(
+                loc=mu, scale_diag=sigma, name='choose_action_dist'
+            )
         action = action_distrib.sample()
         return action
 
@@ -351,80 +359,112 @@ class Player():
 
             L_V = tf.math.reduce_mean(critic_unweighted_loss)/2
 
-            with tape.stop_recording():
-                if hp.IQN_ENABLE:
-                    G = tf.reduce_mean(G, axis=-1)
-                    iqn_input = o.copy()
-                    tau = tf.random.uniform([batch_size, hp.IQN_SUPPORT])
-                    iqn_input['tau'] = tau
-                    support_target = self.t_models['critic'](
-                        iqn_input,
-                        training=False
-                    )
-                    v_target = tf.reduce_mean(support_target,axis=-1)
-                else:
-                    v_target = self.t_models['critic'](
-                        o,
-                        training=False,
-                    )
+            if hp.IQN_ENABLE:
+                G = tf.reduce_mean(G, axis=-1)
+
+            if hp.Algorithm == 'V-MPO':
+                with tape.stop_recording():
+                    if hp.IQN_ENABLE:
+                        iqn_input = o.copy()
+                        tau = tf.random.uniform([batch_size, hp.IQN_SUPPORT])
+                        iqn_input['tau'] = tau
+                        support_target = self.t_models['critic'](
+                            iqn_input,
+                            training=False
+                        )
+                        v_target = tf.reduce_mean(support_target,axis=-1)
+                    else:
+                        v_target = self.t_models['critic'](
+                            o,
+                            training=False,
+                        )
                 # (B,)
                 adv_target = G - v_target
+
                 mu_t, sig_t = self.t_models['actor'](o, training=False)
                 target_dist = tfp.distributions.MultivariateNormalTriL(
                     loc=mu_t, scale_tril=sig_t, name='target_dist'
                 )
-            mu, sig = self.models['actor'](o, training=True)
-            online_dist = tfp.distributions.MultivariateNormalTriL(
-                loc=mu, scale_tril=sig, name='online_dist'
-            )
-            online_logprob = online_dist.log_prob(a)
-            
-            # Top half advantages
-            top_i = tf.argsort(adv_target, 
-                        direction='DESCENDING')[:tf.shape(adv_target)[0]//2]
-            adv_top_half = tf.gather(adv_target, top_i)
-            online_logprob_top_half = tf.gather(online_logprob, top_i)
-            # (B/2,)
-            phi = tf.nn.softmax(adv_top_half/tf.stop_gradient(self.eta))
-            L_PI = tf.math.reduce_mean(-phi * online_logprob_top_half)
-            L_ETA = self.eta*hp.VMPO_eps_eta + \
-                    self.eta*tf.math.log(tf.reduce_mean(tf.math.exp(
-                        adv_top_half/self.eta
-                    )))
-            
-            online_dist_mu = tfp.distributions.MultivariateNormalTriL(
-                loc=mu, scale_tril=sig_t, name='online_dist_mu'
-            )
-            online_dist_sig = tfp.distributions.MultivariateNormalTriL(
-                loc=mu_t, scale_tril=sig, name='online_dist_sig'
-            )
 
-            KL_mu = tfp.distributions.kl_divergence(
-                target_dist, online_dist_mu, allow_nan_stats=False,
-            )
-            KL_sig = tfp.distributions.kl_divergence(
-                target_dist, online_dist_sig, allow_nan_stats=False,
-            )
+                mu, sig = self.models['actor'](o, training=True)
+                online_dist = tfp.distributions.MultivariateNormalTriL(
+                    loc=mu, scale_tril=sig, name='online_dist'
+                )
+                online_logprob = online_dist.log_prob(a)
+                
+                # Top half advantages
+                top_i = tf.argsort(adv_target, 
+                            direction='DESCENDING')[:tf.shape(adv_target)[0]//2]
+                adv_top_half = tf.gather(adv_target, top_i)
+                online_logprob_top_half = tf.gather(online_logprob, top_i)
+                # (B/2,)
+                phi = tf.nn.softmax(adv_top_half/tf.stop_gradient(self.eta))
+                L_PI = tf.math.reduce_mean(-phi * online_logprob_top_half)
+                L_ETA = self.eta*hp.VMPO_eps_eta + \
+                        self.eta*tf.math.log(tf.reduce_mean(tf.math.exp(
+                            adv_top_half/self.eta
+                        )))
+                
+                online_dist_mu = tfp.distributions.MultivariateNormalTriL(
+                    loc=mu, scale_tril=sig_t, name='online_dist_mu'
+                )
+                online_dist_sig = tfp.distributions.MultivariateNormalTriL(
+                    loc=mu_t, scale_tril=sig, name='online_dist_sig'
+                )
 
-            L_A_mu = tf.reduce_mean(
-                self.alpha_mu*(hp.VMPO_eps_alpha_mu - tf.stop_gradient(KL_mu))
-                + tf.stop_gradient(self.alpha_mu)*KL_mu
-            )
-            L_A_sig = tf.reduce_mean(
-                self.alpha_sig*(hp.VMPO_eps_alpha_sig-tf.stop_gradient(KL_sig))
-                + tf.stop_gradient(self.alpha_sig)*KL_sig
-            )
+                KL_mu = tfp.distributions.kl_divergence(
+                    target_dist, online_dist_mu, allow_nan_stats=False,
+                )
+                KL_sig = tfp.distributions.kl_divergence(
+                    target_dist, online_dist_sig, allow_nan_stats=False,
+                )
 
-            loss = L_V + L_PI + L_ETA + L_A_mu + L_A_sig
+                L_A_mu = tf.reduce_mean(
+                    self.alpha_mu*(hp.VMPO_eps_alpha_mu - tf.stop_gradient(KL_mu))
+                    + tf.stop_gradient(self.alpha_mu)*KL_mu
+                )
+                L_A_sig = tf.reduce_mean(
+                    self.alpha_sig*(hp.VMPO_eps_alpha_sig-tf.stop_gradient(KL_sig))
+                    + tf.stop_gradient(self.alpha_sig)*KL_sig
+                )
+
+                loss = L_V + L_PI + L_ETA + L_A_mu + L_A_sig
+
+            elif hp.Algorithm == 'PPO':
+                with tape.stop_recording():
+                    mu_t, sig_t = self.t_models['actor'](o, training=False)
+                    target_dist = tfp.distributions.MultivariateNormalDiag(
+                        loc=mu_t, scale_diag=sig_t, name='target_dist'
+                    )
+                    target_logprob = target_dist.log_prob(a)
+
+                mu, sig = self.models['actor'](o, training=True)
+                online_dist = tfp.distributions.MultivariateNormalDiag(
+                    loc=mu, scale_diag=sig, name='online_dist'
+                )
+                online_logprob = online_dist.log_prob(a)
+                ratios = tf.exp(online_logprob - target_logprob)
+
+                adv = G - tf.stop_gradient(v)
+                surrogate1 = ratios * adv
+                surrogate2 = tf.clip_by_value(
+                    ratios, 1-hp.PPO_eps_clip, 1+hp.PPO_eps_clip
+                ) * adv
+                L_PI = -tf.reduce_mean(tf.minimum(surrogate1, surrogate2))
+
+                loss = L_V + L_PI
+
             original_loss = loss
             if self.mixed_float:
                 loss = self.common_optimizer.get_scaled_loss(loss)
 
         critic_vars = self.models['critic'].trainable_weights
         actor_vars = self.models['actor'].trainable_weights
-        vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
+        all_vars = critic_vars + actor_vars
 
-        all_vars = critic_vars+actor_vars+vmpo_vars
+        if hp.Algorithm == 'V-MPO':
+            vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
+            all_vars = all_vars+vmpo_vars
 
         all_gradients = tape.gradient(loss, all_vars)
         if self.mixed_float:
@@ -437,30 +477,34 @@ class Player():
             zip(all_gradients, all_vars)
         )
 
-        # Clip eta, alpha
-        self.eta.assign(
-            tf.reduce_max([self.eta, hp.VMPO_eta_min]))
-        self.alpha_mu.assign(
-            tf.reduce_max([self.alpha_mu, hp.VMPO_alpha_min]))
-        self.alpha_sig.assign(
-            tf.reduce_max([self.alpha_sig, hp.VMPO_alpha_min]))
+        if hp.Algorithm == 'V-MPO':
+            # Clip eta, alpha
+            self.eta.assign(
+                tf.reduce_max([self.eta, hp.VMPO_eta_min]))
+            self.alpha_mu.assign(
+                tf.reduce_max([self.alpha_mu, hp.VMPO_alpha_min]))
+            self.alpha_sig.assign(
+                tf.reduce_max([self.alpha_sig, hp.VMPO_alpha_min]))
 
 
         if self.total_steps % hp.log_per_steps==0:
             tf.summary.scalar('L_V', L_V, self.total_steps)
             tf.summary.scalar('L_pi', L_PI, self.total_steps)
-            tf.summary.scalar('L_eta', L_ETA, self.total_steps)
-            tf.summary.scalar('L_alpha_mu', L_A_mu, self.total_steps)
-            tf.summary.scalar('L_alpha_sig', L_A_sig, self.total_steps)
             tf.summary.scalar('Total_loss',original_loss, self.total_steps)
             tf.summary.scalar('MaxV', tf.reduce_max(v), self.total_steps)
-            tf.summary.scalar('eta', self.eta, self.total_steps)
-            tf.summary.scalar('alpha_mu', self.alpha_mu, self.total_steps)
-            tf.summary.scalar('alpha_sig', self.alpha_sig, self.total_steps)
-            tf.summary.scalar('KL_mu', tf.reduce_mean(KL_mu), self.total_steps)
-            tf.summary.scalar('KL_sig', tf.reduce_mean(KL_sig), self.total_steps)
-            tf.summary.scalar('adv_top_half',tf.reduce_mean(adv_top_half),
-                                            self.total_steps)
+            if hp.Algorithm == 'V-MPO':
+                tf.summary.scalar('L_eta', L_ETA, self.total_steps)
+                tf.summary.scalar('L_alpha_mu', L_A_mu, self.total_steps)
+                tf.summary.scalar('L_alpha_sig', L_A_sig, self.total_steps)
+                tf.summary.scalar('eta', self.eta, self.total_steps)
+                tf.summary.scalar('alpha_mu', self.alpha_mu, self.total_steps)
+                tf.summary.scalar('alpha_sig', self.alpha_sig,self.total_steps)
+                tf.summary.scalar('KL_mu', tf.reduce_mean(KL_mu), 
+                                                self.total_steps)
+                tf.summary.scalar('KL_sig', tf.reduce_mean(KL_sig), 
+                                                    self.total_steps)
+                tf.summary.scalar('adv_top_half',tf.reduce_mean(adv_top_half),
+                                                self.total_steps)
 
 
         if self.total_steps % hp.log_grad_per_steps == 0:
@@ -474,21 +518,22 @@ class Player():
                 tf.linalg.global_norm(all_gradients[len(critic_vars):-3]),
                 step=self.total_steps,
             )
-            tf.summary.scalar(
-                'eta_grad',
-                tf.norm(all_gradients[-3]),
-                step=self.total_steps,
-            )
-            tf.summary.scalar(
-                'alpha_mu_grad',
-                tf.norm(all_gradients[-2]),
-                step=self.total_steps,
-            )
-            tf.summary.scalar(
-                'alpha_sig_grad',
-                tf.norm(all_gradients[-1]),
-                step=self.total_steps,
-            )
+            if hp.Algorithm == 'V-MPO':
+                tf.summary.scalar(
+                    'eta_grad',
+                    tf.norm(all_gradients[-3]),
+                    step=self.total_steps,
+                )
+                tf.summary.scalar(
+                    'alpha_mu_grad',
+                    tf.norm(all_gradients[-2]),
+                    step=self.total_steps,
+                )
+                tf.summary.scalar(
+                    'alpha_sig_grad',
+                    tf.norm(all_gradients[-1]),
+                    step=self.total_steps,
+                )
 
 
     def step(self, buf:ReplayBuffer):
