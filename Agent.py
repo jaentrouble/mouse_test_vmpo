@@ -459,6 +459,8 @@ class Player():
             tf.summary.scalar('alpha_sig', self.alpha_sig, self.total_steps)
             tf.summary.scalar('KL_mu', tf.reduce_mean(KL_mu), self.total_steps)
             tf.summary.scalar('KL_sig', tf.reduce_mean(KL_sig), self.total_steps)
+            tf.summary.scalar('adv_top_half',tf.reduce_mean(adv_top_half),
+                                            self.total_steps)
 
 
         if self.total_steps % hp.log_grad_per_steps == 0:
