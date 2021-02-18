@@ -418,15 +418,19 @@ class Player():
                 # Top half advantages
                 top_i = tf.argsort(adv_target, 
                             direction='DESCENDING')[:tf.shape(adv_target)[0]//2]
-                adv_top_half = tf.gather(adv_target, top_i)
+                adv_top_half = tf.cast(tf.gather(adv_target, top_i),'float32')
                 online_logprob_top_half = tf.gather(online_logprob, top_i)
                 # (B/2,)
                 phi = tf.nn.softmax(adv_top_half/tf.stop_gradient(self.eta))
                 L_PI = tf.math.reduce_mean(-phi * online_logprob_top_half)
+
+                eta_term = tf.math.log(tf.reduce_mean(tf.math.exp(
+                    adv_top_half/self.eta
+                )))
+                is_finite = tf.cast(tf.math.is_finite(eta_term),'float32')
+
                 L_ETA = self.eta*hp.VMPO_eps_eta + \
-                        self.eta*tf.math.log(tf.reduce_mean(tf.math.exp(
-                            tf.math.divide_no_nan(adv_top_half,self.eta)
-                        )))
+                        self.eta*tf.math.multiply_no_nan(eta_term,is_finite)
                 
                 online_dist_mu = tfp.distributions.MultivariateNormalTriL(
                     loc=mu, scale_tril=sig_t, name='online_dist_mu'
