@@ -492,6 +492,8 @@ class Player():
         if hp.Algorithm == 'V-MPO':
             vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
             all_vars = all_vars+vmpo_vars
+        elif hp.Algorithm == 'A2C':
+            all_vars.append(self.sigma)
 
         all_gradients = tape.gradient(loss, all_vars)
         if self.mixed_float:
@@ -512,6 +514,10 @@ class Player():
                 tf.reduce_max([self.alpha_mu, hp.VMPO_alpha_min]))
             self.alpha_sig.assign(
                 tf.reduce_max([self.alpha_sig, hp.VMPO_alpha_min]))
+        elif hp.Algorithm == 'A2C':
+            self.sigma.assign(
+                tf.clip_by_value(self.sigma, hp.A2C_sig_min, hp.A2C_sig_max)
+            )
 
 
         if self.total_steps % hp.log_per_steps==0:
