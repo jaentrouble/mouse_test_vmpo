@@ -189,12 +189,20 @@ class Player():
         """
         processed_obs = {}
         for name, obs in observation.items():
+            obs_range = self.observation_space[name].high - \
+                        self.observation_space[name].low
+            obs_middle = (self.observation_space[name].high + 
+                          self.observation_space[name].low)/2
             # If only one observation is given, reshape to [1,...]
             if len(observation[name].shape)==\
                 len(self.observation_space[name].shape):
-                processed_obs[name] = tf.cast(obs[tf.newaxis,...],tf.float32)/255
+                processed_obs[name] = \
+                    2*(tf.cast(obs[tf.newaxis,...],tf.float32)-obs_middle)\
+                                                            /obs_range
+                                        
             else :
-                processed_obs[name] = tf.cast(obs, tf.float32)/255
+                processed_obs[name] = \
+                    2*(tf.cast(obs, tf.float32)-obs_middle)/obs_range
         return processed_obs
 
     @tf.function
