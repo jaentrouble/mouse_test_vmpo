@@ -22,7 +22,7 @@ env_kwargs = dict(
 
 CLASSIC = True
 
-model_f = am.classic_dense_vmpo
+model_f = am.classic_dense_ppo
 
 hp.Actor_activation = 'tanh'
 
