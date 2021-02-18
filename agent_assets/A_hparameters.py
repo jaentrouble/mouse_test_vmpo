@@ -6,6 +6,12 @@ k_train_step = 8
 
 Actor_activation = 'tanh'
 
+available_algorithms=(
+    'V-MPO',
+    'PPO',
+)
+Algorithm = 'V-MPO'
+
 class Lr():
     def __init__(self):
         self.start = None
@@ -66,6 +72,7 @@ VMPO_eps_alpha_sig = 1e-5
 VMPO_eta_min = 1e-8
 VMPO_alpha_min = 1e-8
 
+PPO_eps_clip = 0.2
 
 class _Buf():
     def __init__(self):
