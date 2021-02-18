@@ -542,8 +542,8 @@ class Player():
                 tf.summary.scalar('adv_top_half',tf.reduce_mean(adv_top_half),
                                                 self.total_steps)
             elif hp.Algorithm == 'A2C':
-                tf.summary.scalar('MaxSigma', tf.reduce_max(self.sigma),
-                                                self.total_steps)
+                tf.summary.scalar('MaxSigma', 
+                    tf.reduce_max(tf.exp(self.log_sigma)), self.total_steps)
 
 
         if self.total_steps % hp.log_grad_per_steps == 0:
