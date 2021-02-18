@@ -72,6 +72,6 @@ def classic_mini_a2c(observation_space, action_space):
 
     actor = am.actor_a2c_mini_mu(observation_space, action_space, encoder_f)
 
-    critic = cm.critic_v_dense(observation_space, action_space, encoder_f)
+    critic = cm.critic_v_mini(observation_space, action_space, encoder_f)
 
     return actor, critic
