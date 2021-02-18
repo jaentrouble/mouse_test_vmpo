@@ -1,6 +1,3 @@
-from Test_no_reload import CLASSIC
-
-
 Batch_size = 192
 Target_update = 100
 Q_discount = 0.99
