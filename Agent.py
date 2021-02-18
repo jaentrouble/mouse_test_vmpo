@@ -80,7 +80,7 @@ class Player():
         
         elif hp.Algorithm == 'A2C':
             action_num = tf.reduce_prod(self.action_shape)
-            self.sigma = tf.Variable(tf.fill((action_num),0.1),
+            self.log_sigma = tf.Variable(tf.fill((action_num),0.1),
                             trainable=True,name='sigma',dtype='float32')
 
         #Inputs
@@ -218,8 +218,9 @@ class Player():
             )
         elif hp.Algorithm == 'A2C':
             mu = self.t_models['actor'](processed_state, training=False)
+            sigma = tf.exp(self.log_sigma)
             action_distrib = tfp.distributions.MultivariateNormalDiag(
-                loc=mu, scale_diag=self.sigma, name='choose_action_dist'
+                loc=mu, scale_diag=sigma, name='choose_action_dist'
             )
         
         action = action_distrib.sample()
@@ -470,8 +471,9 @@ class Player():
             
             elif hp.Algorithm == 'A2C':
                 mu = self.models['actor'](o, training=True)
+                sigma = tf.exp(self.log_sigma)
                 online_dist = tfp.distributions.MultivariateNormalDiag(
-                    loc=mu, scale_diag=self.sigma, name='online_dist'
+                    loc=mu, scale_diag=sigma, name='online_dist'
                 )
                 online_logprob = online_dist.log_prob(a)
 
@@ -493,7 +495,7 @@ class Player():
             vmpo_vars = [self.eta, self.alpha_mu, self.alpha_sig]
             all_vars = all_vars+vmpo_vars
         elif hp.Algorithm == 'A2C':
-            all_vars.append(self.sigma)
+            all_vars.append(self.log_sigma)
 
         all_gradients = tape.gradient(loss, all_vars)
         if self.mixed_float:
@@ -515,8 +517,9 @@ class Player():
             self.alpha_sig.assign(
                 tf.reduce_max([self.alpha_sig, hp.VMPO_alpha_min]))
         elif hp.Algorithm == 'A2C':
-            self.sigma.assign(
-                tf.clip_by_value(self.sigma, hp.A2C_sig_min, hp.A2C_sig_max)
+            self.log_sigma.assign(
+                tf.math.log(tf.clip_by_value(tf.exp(self.log_sigma), 
+                            hp.A2C_sig_min, hp.A2C_sig_max))
             )
 
 
