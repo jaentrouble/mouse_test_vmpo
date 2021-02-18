@@ -22,7 +22,7 @@ env_kwargs = dict(
     port=7777
 )
 
-CLASSIC = True
+CLASSIC = False
 
 model_f = am.unity_conv_vmpo
 
