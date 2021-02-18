@@ -433,7 +433,7 @@ class Player():
             elif hp.Algorithm == 'PPO':
                 with tape.stop_recording():
                     mu_t, sig_t = self.t_models['actor'](o, training=False)
-                    target_dist = tfp.distributions.MultivariateNormalTriL(
+                    target_dist = tfp.distributions.MultivariateNormalDiag(
                         loc=mu_t, scale_tril=sig_t, name='target_dist'
                     )
                     target_logprob = target_dist.log_prob(a)
