@@ -552,12 +552,12 @@ class Player():
                 tf.linalg.global_norm(all_gradients[:len(critic_vars)]),
                 step=self.total_steps,
             )
-            tf.summary.scalar(
-                'actor_grad_norm',
-                tf.linalg.global_norm(all_gradients[len(critic_vars):-3]),
-                step=self.total_steps,
-            )
             if hp.Algorithm == 'V-MPO':
+                tf.summary.scalar(
+                    'actor_grad_norm',
+                    tf.linalg.global_norm(all_gradients[len(critic_vars):-3]),
+                    step=self.total_steps,
+                )
                 tf.summary.scalar(
                     'eta_grad',
                     tf.norm(all_gradients[-3]),
@@ -573,6 +573,19 @@ class Player():
                     tf.norm(all_gradients[-1]),
                     step=self.total_steps,
                 )
+            elif hp.Algorithm == 'PPO':
+                tf.summary.scalar(
+                    'actor_grad_norm',
+                    tf.linalg.global_norm(all_gradients[len(critic_vars):]),
+                    step=self.total_steps,
+                )
+            elif hp.Algorithm == 'A2C':
+                tf.summary.scalar(
+                    'actor_grad_norm',
+                    tf.linalg.global_norm(all_gradients[len(critic_vars):-1]),
+                    step=self.total_steps,
+                )
+
 
 
     def step(self, buf:ReplayBuffer):
