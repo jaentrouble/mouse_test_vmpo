@@ -204,7 +204,7 @@ class Player():
             action_distrib = tfp.distributions.MultivariateNormalTriL(
                 loc=mu, scale_tril=sigma, name='choose_action_dist'
             )
-        elif hp.Algorithm == 'PPO':
+        elif hp.Algorithm in ('PPO', 'A2C'):
             action_distrib = tfp.distributions.MultivariateNormalDiag(
                 loc=mu, scale_diag=sigma, name='choose_action_dist'
             )
