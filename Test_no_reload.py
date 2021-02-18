@@ -22,7 +22,7 @@ env_kwargs = dict(
 
 CLASSIC = True
 
-model_f = am.classic_mini_a2c
+model_f = am.classic_dense_ppo
 
 hp.Actor_activation = 'tanh'
 
@@ -41,14 +41,14 @@ args = parser.parse_args()
 total_steps = int(args.total_steps)
 my_tqdm = tqdm(total=total_steps, dynamic_ncols=True)
 
-hp.Algorithm = 'A2C'
+hp.Algorithm = 'PPO'
 
-hp.Batch_size = 192
-hp.Buf.N = 64
-hp.k_train_step = 8
+hp.Batch_size = 32
+hp.Buf.N = 4
+hp.k_train_step = 1
 
-hp.Model_save = 300
-hp.histogram = 300
+hp.Model_save = 2000
+hp.histogram = 1000
 
 hp.lr['common'].halt_steps = 0
 hp.lr['common'].start = 1e-4
