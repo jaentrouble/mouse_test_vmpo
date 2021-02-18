@@ -453,6 +453,19 @@ class Player():
                 L_PI = -tf.reduce_mean(tf.minimum(surrogate1, surrogate2))
 
                 loss = L_V + L_PI
+            
+            elif hp.Algorithm == 'A2C':
+                mu, sig = self.models['actor'](o, training=True)
+                online_dist = tfp.distributions.MultivariateNormalDiag(
+                    loc=mu, scale_diag=sig, name='online_dist'
+                )
+                online_logprob = online_dist.log_prob(a)
+
+                adv = G - tf.stop_graident(v)
+                
+                L_PI = -tf.reduce_mean(online_logprob*adv)
+                loss = L_V + L_PI
+
 
             original_loss = loss
             if self.mixed_float:

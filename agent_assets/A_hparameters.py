@@ -9,6 +9,7 @@ Actor_activation = 'tanh'
 available_algorithms=(
     'V-MPO',
     'PPO',
+    'A2C',
 )
 Algorithm = 'V-MPO'
 
