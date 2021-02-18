@@ -22,7 +22,7 @@ env_kwargs = dict(
     port=7777
 )
 
-CLASSIC = False
+hp.CLASSIC = False
 
 model_f = am.unity_conv_vmpo
 
@@ -87,7 +87,7 @@ st = time.time()
 
 
 env = gym.make(ENVIRONMENT, **env_kwargs)
-if CLASSIC:
+if hp.CLASSIC:
     env = tools.EnvWrapper(env)
 last_obs = env.reset()
 render = args.render

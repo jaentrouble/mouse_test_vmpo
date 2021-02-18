@@ -130,15 +130,17 @@ def k_steps(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
     else:
         buf.reset_continue()
         explore_n = hp.Batch_size
-    for i in range(explore_n):
+    for _ in range(explore_n):
         act_steps += 1
         action = player.act(last_obs)
         new_obs, r, d, _ = env.step(action)
         buf.store_step(last_obs, action, r, d)
         
-        if (i+1)%hp.log_actions == 0:
+        if act_steps%hp.log_actions == 0:
             with player.file_writer.as_default():
                 tf.summary.scalar('a0', action[0],act_steps)
+                if not hp.CLASSIC:
+                    tf.summary.scalar('a1', action[1],act_steps)
 
         cum_reward += r
         per_round_steps += 1

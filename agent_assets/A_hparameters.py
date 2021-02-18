@@ -1,3 +1,6 @@
+from Test_no_reload import CLASSIC
+
+
 Batch_size = 192
 Target_update = 100
 Q_discount = 0.99
@@ -58,6 +61,8 @@ lr['encoder'].grad_clip = 1.0
 
 lr['forward'] = lr['encoder']
 lr['inverse'] = lr['encoder']
+
+CLASSIC = False
 
 IQN_ENABLE = True
 IQN_SUPPORT = 64
