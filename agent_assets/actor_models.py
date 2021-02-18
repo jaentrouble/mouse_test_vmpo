@@ -136,3 +136,33 @@ def actor_a2c_dense_mu(observation_space, action_space, encoder_f):
     )
 
     return model
+
+def actor_a2c_mini_mu(observation_space, action_space, encoder_f):
+    """
+    only predicts mu
+    """
+    encoded_state, encoder_inputs = encoder_f(observation_space)
+    s = layers.Flatten(name='actor_flatten_state')(encoded_state)
+
+    action_shape = action_space.shape
+    action_num = tf.math.reduce_prod(action_shape)
+    action_range = action_space.high - action_space.low
+    action_middle = (action_space.low + action_space.high)/2
+
+    x = layers.Dense(64, activation='relu',
+                     name='actor_dense1')(s)
+
+    mu = layers.Dense(action_num, activation=hp.Actor_activation,
+                     name='actor_mu_dense',)(x)
+    mu = mu*action_range/2 + action_middle
+    mu = layers.Activation('linear',dtype='float32',
+                                         name='actor_mu_float32')(mu)
+    
+
+    model = keras.Model(
+        inputs=encoder_inputs,
+        outputs=mu,
+        name='actor'
+    )
+
+    return model

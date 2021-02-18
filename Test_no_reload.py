@@ -22,7 +22,7 @@ env_kwargs = dict(
 
 CLASSIC = True
 
-model_f = am.classic_dense_a2c
+model_f = am.classic_mini_a2c
 
 hp.Actor_activation = 'tanh'
 
