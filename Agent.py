@@ -401,13 +401,13 @@ class Player():
                             o,
                             training=False,
                         )
-                # (B,)
-                adv_target = G - v_target
+                    # (B,)
+                    adv_target = G - v_target
 
-                mu_t, sig_t = self.t_models['actor'](o, training=False)
-                target_dist = tfp.distributions.MultivariateNormalTriL(
-                    loc=mu_t, scale_tril=sig_t, name='target_dist'
-                )
+                    mu_t, sig_t = self.t_models['actor'](o, training=False)
+                    target_dist = tfp.distributions.MultivariateNormalTriL(
+                        loc=mu_t, scale_tril=sig_t, name='target_dist'
+                    )
 
                 mu, sig = self.models['actor'](o, training=True)
                 online_dist = tfp.distributions.MultivariateNormalTriL(
@@ -425,7 +425,7 @@ class Player():
                 L_PI = tf.math.reduce_mean(-phi * online_logprob_top_half)
                 L_ETA = self.eta*hp.VMPO_eps_eta + \
                         self.eta*tf.math.log(tf.reduce_mean(tf.math.exp(
-                            adv_top_half/self.eta
+                            tf.math.divide_no_nan(adv_top_half,self.eta)
                         )))
                 
                 online_dist_mu = tfp.distributions.MultivariateNormalTriL(
