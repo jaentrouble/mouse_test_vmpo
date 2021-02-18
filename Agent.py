@@ -1,4 +1,3 @@
-from numpy.core.numeric import True_
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
