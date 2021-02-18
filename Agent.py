@@ -461,7 +461,7 @@ class Player():
                 )
                 online_logprob = online_dist.log_prob(a)
 
-                adv = G - tf.stop_graident(v)
+                adv = G - tf.stop_gradient(v)
                 
                 L_PI = -tf.reduce_mean(online_logprob*adv)
                 loss = L_V + L_PI
