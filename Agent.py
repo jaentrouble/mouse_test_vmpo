@@ -231,6 +231,7 @@ class Player():
             )
         
         action = action_distrib.sample()
+        action = tf.clip_by_value(action, self.action_space.low, self.action_space.high)
         return action
 
 
