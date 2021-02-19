@@ -45,13 +45,13 @@ my_tqdm = tqdm(total=total_steps, dynamic_ncols=True)
 
 hp.Algorithm = 'V-MPO'
 
-hp.Batch_size = 32
-hp.Buf.N = 4
-hp.k_train_step = 1
+hp.Batch_size = 256
+hp.Buf.N = 32
+hp.k_train_step = 8
 hp.Q_discount = 0.99
 hp.Target_update = 100
 
-hp.Model_save = 2000
+hp.Model_save = 5000
 hp.histogram = 1000
 
 hp.lr['common'].halt_steps = 0
