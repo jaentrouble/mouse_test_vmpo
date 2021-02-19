@@ -155,7 +155,8 @@ if args.profile:
                 )
     remaining_steps = total_steps - 25
     while my_tqdm.n < total_steps:
-        if ((step + 25) % hp.Model_save) == 0 :
+        if ((my_tqdm.n + 25*hp.k_train_step) % hp.Model_save) \
+            in range(hp.k_train_step):
             need_to_eval = True
         last_obs, cum_reward, rounds, act_steps,\
         per_round_steps, evaluated, reset_buffer\
@@ -180,8 +181,8 @@ if args.profile:
 
 else :
     while my_tqdm.n < total_steps:
-        step = my_tqdm.n
-        if (step>0) and ((step % hp.Model_save) == 0) :
+        if (my_tqdm.n>0) and ((my_tqdm.n % hp.Model_save) \
+            in range(hp.k_train_step)):
             need_to_eval = True
         last_obs, cum_reward, rounds, act_steps,\
         per_round_steps, evaluated, reset_buffer\
