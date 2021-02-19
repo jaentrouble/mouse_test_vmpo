@@ -28,7 +28,7 @@ model_f = am.unity_conv_vmpo
 
 hp.Actor_activation = 'tanh'
 
-evaluate_f = tools.evaluate_common
+evaluate_f = tools.evaluate_unity
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-r','--render', dest='render',action='store_true', default=False)
