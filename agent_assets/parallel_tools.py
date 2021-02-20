@@ -182,6 +182,7 @@ class ParallelTrainer():
             env = gym.make(e_n, **e_k)
             if hp.CLASSIC:
                 env = tools.EnvWrapper(env)
+            envs.append(env)
         self._player = Player(
             observation_space=env.observation_space,
             action_space=env.action_space,
