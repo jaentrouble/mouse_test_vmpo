@@ -249,10 +249,10 @@ class ParallelTrainer():
                     })
                     with self._player.file_writer.as_default():
                         tf.summary.scalar('Reward',
-                                          self._cum_reward[done_i],
+                                          self._cum_rewards[done_i],
                                           self._rounds)
                         tf.summary.scalar('Reward_step',
-                                          self._cum_reward[done_i],
+                                          self._cum_rewards[done_i],
                                           self._player.total_steps)
                         tf.summary.scalar('Steps_per_round',
                                           self._per_round_steps[done_i],
