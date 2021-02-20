@@ -19,7 +19,7 @@ env_kwargs = [
 ]
 env_names = [ENVIRONMENT]*len(env_kwargs)
 
-hp.CLASSIC = False
+hp.CLASSIC = True
 
 model_f = am.classic_dense_vmpo
 
