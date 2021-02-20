@@ -274,7 +274,8 @@ class ParallelTrainer():
                         print(f'eval_score:{score}')
                         self._need_to_eval = False
                         
-                        new_obs = self._mult_envs.reset_and_swap([done_i])
+                        new_obs = self._mult_envs.reset_and_swap([done_i],
+                                                                 new_obs)
                 self._last_obs = new_obs
             for _ in range(hp.k_train_step):
                 self._reset_buffer = self._player.step(self._buf) \
