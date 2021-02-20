@@ -84,7 +84,7 @@ class MultiEnvs():
         'indices' argument should be given in a list
         """
         o_aggr = self.reset(indices)
-        for name, arr in observation:
+        for name, arr in observation.items():
             arr[indices] = o_aggr[name]
         return observation
 
