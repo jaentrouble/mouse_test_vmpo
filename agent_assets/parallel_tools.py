@@ -134,7 +134,7 @@ class SingleEnvWrapper():
         return ray.get(self._r_env.reset.remote())
 
     def render(self, *args, **kwargs):
-        return self._r_env.render.remote(*args, **kwargs)
+        return ray.get(self._r_env.render.remote(*args, **kwargs))
 
 
 @ray.remote
