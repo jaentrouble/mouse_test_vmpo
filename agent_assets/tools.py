@@ -114,6 +114,9 @@ class EnvWrapper():
     def render(self, *args, **kwargs):
         return self.env.render(*args, **kwargs)
 
+    def close(self):
+        return self.env.close()
+
 
 
 def k_steps(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
