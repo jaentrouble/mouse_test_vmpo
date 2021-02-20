@@ -117,15 +117,18 @@ class MultiEnvs():
         local environment.
         For evaluation purpose
         """
-        return SingleEnvWrapper(self._r_envs[env_index])
+        return SingleEnvWrapper(self._r_envs[env_index],
+                                self.observation_space, self.action_space)
 
 class SingleEnvWrapper():
     """SingleEnvWrapper
     Wraps a single remote env to use as a normal local environment.
     For use in evaluation.
     """
-    def __init__(self, r_env):
+    def __init__(self, r_env, observation_space, action_space):
         self._r_env = r_env
+        self.observation_space = observation_space
+        self.action_space = action_space
     
     def step(self, action):
         return ray.get(self._r_env.step.remote(action))
