@@ -27,6 +27,22 @@ env_kwargs = [
     dict(
         ip='localhost',
         port=7780
+    ),
+    dict(
+        ip='localhost',
+        port=7781
+    ),
+    dict(
+        ip='localhost',
+        port=7782
+    ),
+    dict(
+        ip='localhost',
+        port=7783
+    ),
+    dict(
+        ip='localhost',
+        port=7784
     )
 ]
 env_names = [ENVIRONMENT]*len(env_kwargs)
@@ -53,9 +69,9 @@ total_steps = int(args.total_steps)
 hp.Algorithm = 'V-MPO'
 
 hp.Batch_size = 32
-hp.Buf.N = 4
-hp.k_train_step = 1
-hp.Q_discount = 0.9
+hp.Buf.N = 64
+hp.k_train_step = 8
+hp.Q_discount = 0.99
 hp.Target_update = 100
 
 hp.Model_save = 2000
