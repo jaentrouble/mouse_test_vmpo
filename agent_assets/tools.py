@@ -29,8 +29,11 @@ def evaluate_unity(player, env, video_type):
     fourcc = cv2.VideoWriter_fourcc(*fcc)
     # Becareful : cv2 order of image size is (width, height)
     eye_size = env.observation_space['obs'].shape[1::-1]
+    # Test image for size
+    rend_img = env.render('rgb')
+    render_size = (rend_img.shape[1], rend_img.shape[0])
     eye_out = cv2.VideoWriter(eye_dir, fourcc, 10, eye_size)
-    ren_out = cv2.VideoWriter(ren_dir, fourcc, 10, env.render_size)
+    ren_out = cv2.VideoWriter(ren_dir, fourcc, 10, render_size)
 
     o = env.reset()
     score = 0
@@ -79,10 +82,8 @@ def evaluate_common(player, env, video_type):
         a = player.act(o)
         o,r,done,i = env.step(a)
         score += r
-        # This will turn image 90 degrees, but it does not make any difference,
-        # so keep it this way to save computations
         img = env.render('rgb_array')
-        out.write(np.flip(env.render('rgb_array'), axis=-1))
+        out.write(np.flip(img, axis=-1))
     out.release()
     with open(score_dir, 'w') as f:
         f.write(str(score))
