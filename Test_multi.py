@@ -9,23 +9,35 @@ import argparse
 from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 
-ENVIRONMENT = 'Pendulum-v0'
+ENVIRONMENT = 'mouseUnity-v0'
 
 env_kwargs = [
     dict(
+        ip='localhost',
+        port=7777
     ),
     dict(
+        ip='localhost',
+        port=7778
+    ),
+    dict(
+        ip='localhost',
+        port=7779
+    ),
+    dict(
+        ip='localhost',
+        port=7780
     )
 ]
 env_names = [ENVIRONMENT]*len(env_kwargs)
 
 hp.CLASSIC = True
 
-model_f = am.classic_dense_vmpo
+model_f = am.unity_conv_vmpo
 
 hp.Actor_activation = 'tanh'
 
-evaluate_f = tools.evaluate_common
+evaluate_f = tools.evaluate_unity
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--step', dest='total_steps',default=100000, type=int)
