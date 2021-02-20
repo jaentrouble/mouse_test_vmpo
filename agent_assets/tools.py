@@ -121,7 +121,7 @@ def k_steps(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
             eval_f = None):
     """
     1. Fill buffer (if need_to_reset: reset all)
-    2. Train player one step
+    2. Train player k steps
     """
     evaluated = False
     if reset_buffer:
