@@ -2,11 +2,13 @@ import ray
 import numpy as np
 from . import A_hparameters as hp
 from . import tools
-from .replaybuffer import ReplayBuffer
+from .replaybuffer import ReplayBufferMulti
 from .Agent import Player
 import gym
 from tqdm import tqdm
-import tensorflow as tf
+
+if __name__ == '__main__':
+    import tensorflow as tf
 
 class MultiEnvs():
     """MultiEnvs
