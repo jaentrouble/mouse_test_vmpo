@@ -6,9 +6,7 @@ from .replaybuffer import ReplayBufferMulti
 from .Agent import Player
 import gym
 from tqdm import tqdm
-
-if __name__ == '__main__':
-    import tensorflow as tf
+import tensorflow as tf
 
 class MultiEnvs():
     """MultiEnvs
