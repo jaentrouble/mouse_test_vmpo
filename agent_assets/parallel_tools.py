@@ -195,7 +195,7 @@ class ParallelTrainer():
         self._mult_envs = MultiEnvs(envs)
         self._buf = ReplayBufferMulti(env.observation_space, env.action_space)
         self._reset_buffer = True
-        self._need_to_eval = True
+        self._need_to_eval = False
         self._cum_rewards = np.zeros(self._env_n)
         self._per_round_steps = np.zeros(self._env_n)
         self._rounds = 0
