@@ -161,6 +161,9 @@ class RemoteEnv():
     def render(self, *args, **kwargs):
         return self.env.render(*args, **kwargs)
 
+    def close(self):
+        return self.env.close()
+
 class ParallelTrainer():
     def __init__(self, model_f, m_dir, log_name, mixed_float,
                        env_names, env_kwargs):
