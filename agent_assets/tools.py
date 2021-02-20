@@ -102,9 +102,7 @@ class EnvWrapper():
         self.observation_space = spaces.Dict(
             {'obs' : self.env.observation_space}
         )
-    
-    def __getattr__(self, attr):
-        return self.env.__getattribute__(attr)
+        self.action_space = self.env.action_space
 
     def step(self, action):
         o, r, d, i = self.env.step(action)
@@ -112,6 +110,9 @@ class EnvWrapper():
 
     def reset(self):
         return {'obs':self.env.reset()}
+
+    def render(self, *args, **kwargs):
+        return self.env.render(*args, **kwargs)
 
 
 
