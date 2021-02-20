@@ -4,7 +4,7 @@ import numpy as np
 from .replaybuffer import ReplayBuffer
 from . import A_hparameters as hp
 from tqdm import tqdm
-from Agent import Player
+from .Agent import Player
 import tensorflow as tf
 
 def evaluate_unity(player, env, video_type):

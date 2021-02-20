@@ -5,7 +5,6 @@ import agent_assets.agent_models as am
 from agent_assets.parallel_tools import ParallelTrainer
 from agent_assets import tools
 import agent_assets.A_hparameters as hp
-from tqdm import tqdm
 import argparse
 from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
