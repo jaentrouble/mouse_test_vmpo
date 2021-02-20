@@ -31,7 +31,7 @@ env_kwargs = [
 ]
 env_names = [ENVIRONMENT]*len(env_kwargs)
 
-hp.CLASSIC = True
+hp.CLASSIC = False
 
 model_f = am.unity_conv_vmpo
 
