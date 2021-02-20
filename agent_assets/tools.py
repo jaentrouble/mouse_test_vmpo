@@ -4,7 +4,7 @@ import numpy as np
 from .replaybuffer import ReplayBuffer
 from . import A_hparameters as hp
 from tqdm import tqdm
-from Agent import Player
+from .Agent import Player
 import tensorflow as tf
 
 def evaluate_unity(player, env, video_type):
@@ -29,8 +29,11 @@ def evaluate_unity(player, env, video_type):
     fourcc = cv2.VideoWriter_fourcc(*fcc)
     # Becareful : cv2 order of image size is (width, height)
     eye_size = env.observation_space['obs'].shape[1::-1]
+    # Test image for size
+    rend_img = env.render('rgb')
+    render_size = (rend_img.shape[1], rend_img.shape[0])
     eye_out = cv2.VideoWriter(eye_dir, fourcc, 10, eye_size)
-    ren_out = cv2.VideoWriter(ren_dir, fourcc, 10, env.render_size)
+    ren_out = cv2.VideoWriter(ren_dir, fourcc, 10, render_size)
 
     o = env.reset()
     score = 0
@@ -79,10 +82,8 @@ def evaluate_common(player, env, video_type):
         a = player.act(o)
         o,r,done,i = env.step(a)
         score += r
-        # This will turn image 90 degrees, but it does not make any difference,
-        # so keep it this way to save computations
         img = env.render('rgb_array')
-        out.write(np.flip(env.render('rgb_array'), axis=-1))
+        out.write(np.flip(img, axis=-1))
     out.release()
     with open(score_dir, 'w') as f:
         f.write(str(score))
@@ -102,9 +103,7 @@ class EnvWrapper():
         self.observation_space = spaces.Dict(
             {'obs' : self.env.observation_space}
         )
-    
-    def __getattr__(self, attr):
-        return self.env.__getattribute__(attr)
+        self.action_space = self.env.action_space
 
     def step(self, action):
         o, r, d, i = self.env.step(action)
@@ -112,6 +111,12 @@ class EnvWrapper():
 
     def reset(self):
         return {'obs':self.env.reset()}
+
+    def render(self, *args, **kwargs):
+        return self.env.render(*args, **kwargs)
+
+    def close(self):
+        return self.env.close()
 
 
 
@@ -121,7 +126,7 @@ def k_steps(reset_buffer:bool, buf:ReplayBuffer, player:Player, env,
             eval_f = None):
     """
     1. Fill buffer (if need_to_reset: reset all)
-    2. Train player one step
+    2. Train player k steps
     """
     evaluated = False
     if reset_buffer:
