@@ -226,6 +226,7 @@ class ParallelTrainer():
             if self._reset_buffer:
                 self._buf.reset_all()
                 explore_n = hp.Batch_size+hp.Buf.N
+                self._reset_buffer = False
             else:
                 self._buf.reset_continue()
                 explore_n = hp.Batch_size
