@@ -572,17 +572,17 @@ class Player():
                 )
                 tf.summary.scalar(
                     'eta_grad',
-                    tf.norm(all_gradients[-3]),
+                    all_gradients[-3],
                     step=self.total_steps,
                 )
                 tf.summary.scalar(
                     'alpha_mu_grad',
-                    tf.norm(all_gradients[-2]),
+                    all_gradients[-2],
                     step=self.total_steps,
                 )
                 tf.summary.scalar(
                     'alpha_sig_grad',
-                    tf.norm(all_gradients[-1]),
+                    all_gradients[-1],
                     step=self.total_steps,
                 )
             elif hp.Algorithm == 'PPO':
