@@ -8,7 +8,7 @@ import argparse
 from agent_assets.Agent import Player
 import agent_assets.agent_models as am
 from agent_assets import tools
-
+import agent_assets.A_hparameters as hp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l','--load', dest='load', required=True,)
@@ -26,6 +26,9 @@ env_kwargs = dict(
     ip='localhost',
     port = 7777,
 )
+
+hp.IQN_ENABLE = False
+hp.ICM_ENABLE = False
 
 
 st = time.time()
