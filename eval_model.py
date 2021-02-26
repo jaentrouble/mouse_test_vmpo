@@ -18,7 +18,7 @@ parser.add_argument('-mf','--mixedfloat', dest='mixed_float',
 args = parser.parse_args()
 
 
-model_f = am.unity_res_model
+model_f = am.unity_conv_vmpo
 
 evaluate_f = tools.evaluate_unity
 
