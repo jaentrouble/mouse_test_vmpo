@@ -42,14 +42,17 @@ def actor_vmpo_dense(observation_space, action_space, encoder_f):
                             activation='linear', name='actor_chol_flat')(x)
     chol_tri = tfp.math.fill_triangular(chol_flat, name='actor_chol_tri')
 
-    diag_i = tf.tile(tf.range(action_num)[:,None],(1,2))
+    diag_i = tf.tile(tf.range(action_num)[:,None],(1,2)) # [[1,1],[2,2],...]
     batch_size = tf.shape(chol_flat)[0]
     diag_i_batch = tf.concat([
         tf.tile(tf.range(batch_size)[:,None], (1,action_num))[...,None],
         tf.tile(diag_i[None,...],(batch_size, 1, 1))
     ], axis=-1)
+    #[[1,1,1],[1,2,2],[1,3,3],...
+    # [2,1,1],[2,2,2],[2,3,3],...
+    # ...]
     chol_diags = tf.gather_nd(chol_tri, diag_i_batch, name='actor_chol_diag')
-    chol_diags = tf.math.softplus(chol_diags, name='actor_softplus')
+    chol_diags = tf.math.softplus(chol_diags, name='actor_softplus') + 1e-5
     sigma_chol = tf.tensor_scatter_nd_update(
         chol_tri, diag_i_batch, chol_diags, name='actor_sigma_chol'
     )

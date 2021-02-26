@@ -440,19 +440,34 @@ class Player():
                 )
 
                 KL_mu = tfp.distributions.kl_divergence(
-                    target_dist, online_dist_mu, allow_nan_stats=False,
+                    target_dist, online_dist_mu, allow_nan_stats=True,
                 )
                 KL_sig = tfp.distributions.kl_divergence(
-                    target_dist, online_dist_sig, allow_nan_stats=False,
+                    target_dist, online_dist_sig, allow_nan_stats=True,
+                )
+
+                KL_mu_safe = tf.math.multiply_no_nan(
+                    KL_mu,
+                    tf.cast(
+                        tf.math.is_finite(KL_mu), 'float32'
+                    )
+                )
+                KL_sig_safe = tf.math.multiply_no_nan(
+                    KL_sig,
+                    tf.cast(
+                        tf.math.is_finite(KL_sig), 'float32'
+                    )
                 )
 
                 L_A_mu = tf.reduce_mean(
-                    self.alpha_mu*(hp.VMPO_eps_alpha_mu - tf.stop_gradient(KL_mu))
-                    + tf.stop_gradient(self.alpha_mu)*KL_mu
+                    self.alpha_mu*(hp.VMPO_eps_alpha_mu\
+                                    -tf.stop_gradient(KL_mu_safe))
+                    + tf.stop_gradient(self.alpha_mu)*KL_mu_safe
                 )
                 L_A_sig = tf.reduce_mean(
-                    self.alpha_sig*(hp.VMPO_eps_alpha_sig-tf.stop_gradient(KL_sig))
-                    + tf.stop_gradient(self.alpha_sig)*KL_sig
+                    self.alpha_sig*(hp.VMPO_eps_alpha_sig\
+                                    -tf.stop_gradient(KL_sig_safe))
+                    + tf.stop_gradient(self.alpha_sig)*KL_sig_safe
                 )
 
                 loss = L_V + L_PI + L_ETA + L_A_mu + L_A_sig
