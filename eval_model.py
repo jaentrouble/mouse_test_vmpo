@@ -5,7 +5,7 @@ from tqdm import trange
 import numpy as np
 import cv2
 import argparse
-from Agent import Player
+from agent_assets.Agent import Player
 import agent_assets.agent_models as am
 from agent_assets import tools
 
