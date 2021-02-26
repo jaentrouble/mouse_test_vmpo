@@ -71,7 +71,7 @@ hp.Algorithm = 'V-MPO'
 hp.Batch_size = 4
 hp.Buf.N = 4
 hp.k_train_step = 1
-hp.Q_discount = 0.9
+hp.Q_discount = 0.8
 hp.Target_update = 10
 
 hp.Model_save = 2000
