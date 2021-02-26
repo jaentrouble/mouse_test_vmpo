@@ -213,7 +213,11 @@ class ParallelTrainer():
     
     def train_n_steps(self, steps, eval_f=None):
         if eval_f is None:
+            print('\n')
+            print("*"*80)
             print("Warning: No eval function so not evaluating")
+            print("*"*80)
+            print('\n')
             evaluate = False
         else:
             evaluate = True

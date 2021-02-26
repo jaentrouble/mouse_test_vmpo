@@ -126,7 +126,7 @@ if args.profile:
 
 
 else :
-    p_trainer.train_n_steps(total_steps)
+    p_trainer.train_n_steps(total_steps, evaluate_f)
 
 p_trainer.save_and_evaluate(evaluate_f)
 d = timedelta(seconds=time.time() - st)
