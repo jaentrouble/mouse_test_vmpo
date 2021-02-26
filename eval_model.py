@@ -35,7 +35,6 @@ player = Player(
     observation_space=env.observation_space,
     action_space= env.action_space, 
     model_f= model_f,
-    tqdm= None,
     mixed_float=args.mixed_float,
     m_dir=args.load,
 )
