@@ -68,21 +68,24 @@ total_steps = int(args.total_steps)
 
 hp.Algorithm = 'V-MPO'
 
-hp.Batch_size = 32
-hp.Buf.N = 32
-hp.k_train_step = 8
+hp.Batch_size = 4
+hp.Buf.N = 4
+hp.k_train_step = 1
 hp.Q_discount = 0.9
-hp.Target_update = 100
+hp.Target_update = 10
 
 hp.Model_save = 2000
 hp.histogram = 1000
+hp.log_per_steps = 99
+hp.log_grad_per_steps = 9
+hp.log_actions = 99
 
 hp.lr['common'].halt_steps = 0
 hp.lr['common'].start = 1e-4
 hp.lr['common'].end = 1e-4
 hp.lr['common'].nsteps = 2e4
 hp.lr['common'].epsilon = 1e-5
-hp.lr['common'].grad_clip = 0.1
+hp.lr['common'].grad_clip = None
 
 hp.lr['encoder'].halt_steps = 0
 hp.lr['encoder'].start = 1e-5

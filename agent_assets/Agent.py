@@ -555,6 +555,8 @@ class Player():
             tf.summary.scalar('L_pi', L_PI, self.total_steps)
             tf.summary.scalar('Total_loss',original_loss, self.total_steps)
             tf.summary.scalar('MaxV', tf.reduce_max(v), self.total_steps)
+            tf.summary.scalar('Log_prob',tf.reduce_mean(online_logprob),
+                                            self.total_steps)
             if hp.Algorithm == 'V-MPO':
                 tf.summary.scalar('L_eta', L_ETA, self.total_steps)
                 tf.summary.scalar('L_alpha_mu', L_A_mu, self.total_steps)
