@@ -9,51 +9,21 @@ import argparse
 from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 
-ENVIRONMENT = 'mouseUnity-v0'
+ENVIRONMENT = 'BipedalWalker-v3'
 
 env_kwargs = [
     dict(
-        ip='localhost',
-        port=7777
     ),
-    dict(
-        ip='localhost',
-        port=7778
-    ),
-    dict(
-        ip='localhost',
-        port=7779
-    ),
-    dict(
-        ip='localhost',
-        port=7780
-    ),
-    dict(
-        ip='localhost',
-        port=7781
-    ),
-    dict(
-        ip='localhost',
-        port=7782
-    ),
-    dict(
-        ip='localhost',
-        port=7783
-    ),
-    dict(
-        ip='localhost',
-        port=7784
-    )
-]
+] * 32
 env_names = [ENVIRONMENT]*len(env_kwargs)
 
-hp.CLASSIC = False
+hp.CLASSIC = True
 
-model_f = am.unity_conv_vmpo
+model_f = am.classic_dense_vmpo
 
 hp.Actor_activation = 'tanh'
 
-evaluate_f = tools.evaluate_unity
+evaluate_f = tools.evaluate_common
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--step', dest='total_steps',default=100000, type=int)
@@ -68,7 +38,7 @@ total_steps = int(args.total_steps)
 
 hp.Algorithm = 'V-MPO'
 
-hp.Batch_size = 4
+hp.Batch_size = 1
 hp.Buf.N = 4
 hp.k_train_step = 1
 hp.Q_discount = 0.9
