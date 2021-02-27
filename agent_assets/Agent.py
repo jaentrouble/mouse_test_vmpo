@@ -193,6 +193,12 @@ class Player():
                         self.observation_space[name].low
             obs_middle = (self.observation_space[name].high + 
                           self.observation_space[name].low)/2
+
+            # In case some values are not finite
+            # range -> 1
+            # middle -> 0
+            obs_range = np.where(np.isfinite(obs_range),obs_range,1)
+            obs_middle = np.where(np.isfinite(obs_middle),obs_middle,0)
             # If only one observation is given, reshape to [1,...]
             if len(observation[name].shape)==\
                 len(self.observation_space[name].shape):
