@@ -19,10 +19,10 @@ MAX_SPEED = 0.5
 MAX_ANGLE = 10
 
 NUTELLA_REWARD = 10.0
-PUNISH_STEP = 0.0
+PUNISH_STEP = 0.1
 PUNISH_MOVEMENT = 0.0
 
-FINISH_WHEN_REWARD = True
+FINISH_WHEN_REWARD = False
 
 class MouseEnv_unity(gym.Env) :
     """MouseEnv_unity
