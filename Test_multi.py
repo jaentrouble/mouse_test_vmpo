@@ -44,7 +44,7 @@ hp.k_train_step = 1
 hp.Q_discount = 0.9
 hp.Target_update = 10
 
-hp.Model_save = 2000
+hp.Model_save = 20000
 hp.histogram = 1000
 hp.log_per_steps = 99
 hp.log_grad_per_steps = 9
