@@ -9,7 +9,7 @@ import argparse
 from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 
-ENVIRONMENT = 'BipedalWalker-v3'
+ENVIRONMENT = 'BipedalWalkerHardcore-v3'
 
 env_kwargs = [
     dict(
