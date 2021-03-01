@@ -9,7 +9,7 @@ import argparse
 from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 
-ENVIRONMENT = 'BipedalWalker-v3'
+ENVIRONMENT = 'BipedalWalkerHardcore-v3'
 
 env_kwargs = [
     dict(
@@ -38,11 +38,11 @@ total_steps = int(args.total_steps)
 
 hp.Algorithm = 'V-MPO'
 
-hp.Batch_size = 1
-hp.Buf.N = 4
-hp.k_train_step = 1
-hp.Q_discount = 0.9
-hp.Target_update = 10
+hp.Batch_size = 2
+hp.Buf.N = 8
+hp.k_train_step = 2
+hp.Q_discount = 0.95
+hp.Target_update = 20
 
 hp.Model_save = 20000
 hp.histogram = 1000
