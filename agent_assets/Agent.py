@@ -536,10 +536,20 @@ class Player():
                 self.common_optimizer.get_unscaled_gradients(
                     all_gradients
                 )
-
-        self.common_optimizer.apply_gradients(
-            zip(all_gradients, all_vars)
-        )
+            # Mixed precision handles NaN grads itself
+            apply_grad = True
+        else:
+            apply_grad = True
+            # Do not update if any grad is not finite
+            for grad in all_gradients:
+                apply_grad = tf.logical_and(
+                    apply_grad,
+                    tf.math.reduce_all(tf.math.is_finite(grad))
+                )
+        if apply_grad:
+            self.common_optimizer.apply_gradients(
+                zip(all_gradients, all_vars)
+            )
 
         if hp.Algorithm == 'V-MPO':
             # Clip eta, alpha
