@@ -29,7 +29,6 @@ for _ in trange(3000):
     if d :
         env.reset()
     
-    print(r)
 # print(diff)
 # input('done:')
 writer.release()

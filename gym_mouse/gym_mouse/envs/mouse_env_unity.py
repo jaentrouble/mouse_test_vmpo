@@ -9,9 +9,12 @@ import sys
 # NOTE: (WIDTH, HEIGHT)
 FRAME_SIZE = (80,80)
 FRAME_BYTE = np.prod(FRAME_SIZE) * 4 #Channel 4
+WHISK_NUM = 13
+WHISK_BYTE = WHISK_NUM * 4 # float = 4 bytes
 RENDER_SIZE = (192,192)
 RENDER_BYTE = np.prod(RENDER_SIZE) * 4 #Channel 4
 
+#NOTE: Whisker (Time, WHISKER_N)
 
 RECV_BYTE = 16384
 
@@ -65,8 +68,11 @@ class MouseEnv_unity(gym.Env) :
 
         # 3 Continuous Inputs from both eyes
         self.observation_space = Dict(
-            {'obs' : Box(0, 255, shape=(FRAME_SIZE[1],FRAME_SIZE[0],9), 
-                                        dtype=np.uint8)}
+            {
+                'obs' : Box(0, 255, shape=(FRAME_SIZE[1],FRAME_SIZE[0],9), 
+                                        dtype=np.uint8),
+                'whi' : Box(0, 1.0, shape=(3, 13), dtype=np.float32)
+            }
         )
         
 
@@ -85,17 +91,9 @@ class MouseEnv_unity(gym.Env) :
         }
         data = self._send_and_receive(to_send)
 
-        raw_image = np.frombuffer(data[:FRAME_BYTE],dtype=np.uint8)
-        # unity renders from bottom to top
-        new_obs = raw_image.reshape(
-            (FRAME_SIZE[1],FRAME_SIZE[0],4)
-        )[::-1,...,:3]
-        self._obs_buffer.pop(0)
-        self._obs_buffer.append(new_obs)
-        observation = {
-            'obs':np.concatenate(self._obs_buffer,axis=-1)
-        }
-        info_str = data[FRAME_BYTE:].decode('utf-8')
+        observation = self._data_to_obs(data)
+
+        info_str = data[FRAME_BYTE+WHISK_BYTE:].decode('utf-8')
         info = json.loads(info_str)
 
         reward = info['reward'] * NUTELLA_REWARD
@@ -145,17 +143,7 @@ class MouseEnv_unity(gym.Env) :
             'reset' : True,
         }
         data = self._send_and_receive(to_send)
-
-        raw_image = np.frombuffer(data[:25600],dtype=np.uint8)
-        # unity renders from bottom to top
-        new_obs = raw_image.reshape(
-            (FRAME_SIZE[1],FRAME_SIZE[0],4)
-        )[::-1,...,:3]
-
-        self._obs_buffer = [new_obs]*3
-        initial_observation = {
-            'obs':np.concatenate(self._obs_buffer,axis=-1)
-        }
+        initial_observation = self._data_to_obs(data, reset=True)
         return initial_observation
 
     def render(self, mode='human'):
@@ -207,3 +195,27 @@ class MouseEnv_unity(gym.Env) :
             received_bytes += len(data)
         return b''.join(all_data)
 
+    def _data_to_obs(self, data, reset=False):
+        raw_image = np.frombuffer(data[:FRAME_BYTE],dtype=np.uint8)
+        # unity renders from bottom to top
+        new_obs = raw_image.reshape(
+            (FRAME_SIZE[1],FRAME_SIZE[0],4)
+        )[::-1,...,:3]
+
+        new_whisker = np.frombuffer(
+                data[FRAME_BYTE:FRAME_BYTE+WHISK_BYTE],dtype=np.float32)
+
+        if reset:
+            self._obs_buffer = [new_obs]*3
+            self._whi_buffer = [new_whisker]*3
+        else:
+            self._obs_buffer.pop(0)
+            self._whi_buffer.pop(0)
+            self._obs_buffer.append(new_obs)
+            self._whi_buffer.append(new_whisker)
+
+        observation = {
+            'obs':np.concatenate(self._obs_buffer,axis=-1),
+            'whi':np.stack(self._whi_buffer,axis=0)
+        }
+        return observation
