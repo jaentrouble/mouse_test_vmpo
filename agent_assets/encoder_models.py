@@ -13,7 +13,7 @@ Encoder model functions should return:
 """
 
 def encoder_whisker_conv(observation_space):
-    obs_inputs = keras.Input(observation_space['obs'])
+    obs_inputs = keras.Input(observation_space['obs'].shape, name='obs')
     x = layers.Conv2D(
         32, 
         3, 
