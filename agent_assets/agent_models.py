@@ -31,6 +31,15 @@ Every functions should take following two as inputs:
 
 #     return actor, critic, icm_models
 
+def unity_whisker_vmpo(observation_space, action_space):
+    encoder_f = em.encoder_whisker_conv
+
+    actor = am.actor_vmpo_dense(observation_space, action_space, encoder_f)
+
+    critic = cm.critic_v_dense(observation_space, action_space, encoder_f)
+
+    return actor, critic
+
 def unity_conv_vmpo(observation_space, action_space):
     encoder_f = em.encoder_simple_conv
 
