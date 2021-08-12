@@ -24,7 +24,7 @@ env_kwargs = dict(
 
 hp.CLASSIC = False
 
-model_f = am.unity_conv_vmpo
+model_f = am.unity_whisker_vmpo
 
 hp.Actor_activation = 'tanh'
 
