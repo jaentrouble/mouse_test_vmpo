@@ -2,7 +2,7 @@ import gym
 import gym_mouse
 import time
 import numpy as np
-from Agent import Player
+from agent_assets.Agent import Player
 import agent_assets.agent_models as am
 from agent_assets import tools
 from agent_assets.tools import k_steps
