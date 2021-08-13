@@ -62,6 +62,16 @@ class Player():
         self.action_range = action_space.high - action_space.low
         self.action_shape = action_space.shape
         self.observation_space = observation_space
+        self.obs_range = {}
+        self.obs_middle = {}
+        for name, space in self.observation_space.items():
+            o_range = (space.high - space.low)
+            o_middle = (space.high + space.low)/2
+            o_range = np.where(np.isfinite(o_range),o_range,1)
+            o_middle = np.where(np.isfinite(o_middle),o_middle,0)
+            self.obs_range[name] = o_range
+            self.obs_middle[name] = o_middle
+
         self.mixed_float = mixed_float
         if mixed_float:
             policy = mixed_precision.Policy('mixed_float16')
@@ -183,41 +193,31 @@ class Player():
             return new_lr
 
 
-    # @tf.function
     def pre_processing(self, observation:dict):
         """
         Preprocess input data
         """
         processed_obs = {}
         for name, obs in observation.items():
-            obs_range = self.observation_space[name].high - \
-                        self.observation_space[name].low
-            obs_middle = (self.observation_space[name].high + 
-                          self.observation_space[name].low)/2
-                          
-            # In case some values are not finite
-            # range -> 1
-            # middle -> 0
-            obs_range = np.where(np.isfinite(obs_range),obs_range,1)
-            obs_middle = np.where(np.isfinite(obs_middle),obs_middle,0)
+            obs_middle = self.obs_middle[name]
+            obs_range = self.obs_range[name]
             # If only one observation is given, reshape to [1,...]
             if len(observation[name].shape)==\
                 len(self.observation_space[name].shape):
-                processed_obs[name] = \
+                processed_obs[name] = tf.constant(
                     2*(tf.cast(obs[tf.newaxis,...],tf.float32)-obs_middle)\
-                                                            /obs_range
+                                                            /obs_range)
                                         
             else :
-                processed_obs[name] = \
-                    2*(tf.cast(obs, tf.float32)-obs_middle)/obs_range
+                processed_obs[name] = tf.constant(
+                    2*(tf.cast(obs, tf.float32)-obs_middle)/obs_range)
         return processed_obs
 
-    # @tf.function
-    def choose_action(self, before_state):
+    @tf.function
+    def choose_action(self, processed_state):
         """
         Policy part
         """
-        processed_state = self.pre_processing(before_state)
         # Policy Gradient methods use old target model to collect data
         
         if hp.Algorithm == 'V-MPO':
@@ -243,7 +243,8 @@ class Player():
 
 
     def act_batch(self, before_state):
-        action = self.choose_action(before_state)
+        processed_state = self.pre_processing(before_state)
+        action = self.choose_action(processed_state)
         return action.numpy()
         
     def act(self, before_state):
@@ -251,15 +252,8 @@ class Player():
         Will squeeze axis=0 if Batch_num = 1
         If you don't want to squeeze, use act_batch()
         """
-        # if self.last_func is None:
-        #     self.last_func = self.choose_action.get_concrete_function(before_state)
-        # else:
-        #     current_func = self.choose_action.get_concrete_function(before_state)
-        #     if self.last_func is current_func:
-        #         print(self.last_func is current_func)
-        #         raise ValueError
-
-        action = self.choose_action(before_state)
+        processed_state = self.pre_processing(before_state)
+        action = self.choose_action(processed_state)
         action_np = action.numpy()
         if action_np.shape[0] == 1:
             return action_np[0]
@@ -267,8 +261,8 @@ class Player():
             return action_np
 
 
-    # @tf.function
-    def train_step(self, o, r, d, a, sn_batch, sp_batch=None):
+    @tf.function
+    def train_step(self, o, r, d, a, sn_batch, sp_batch):
         """
         All inputs are expected to be preprocessed
         """
@@ -659,6 +653,13 @@ class Player():
         sn_batch = self.pre_processing(sn_batch)
         if hp.ICM_ENABLE:
             sp_batch = self.pre_processing(sp_batch)
+        else:
+            sp_batch = tf.constant(0)
+        r_batch = tf.constant(r_batch)
+        d_batch = tf.constant(d_batch)
+        a_batch = tf.constant(a_batch)
+
+        
 
         # sp_batch is only used with ICM enabled
         data = (
