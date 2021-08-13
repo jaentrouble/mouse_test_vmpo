@@ -653,7 +653,7 @@ class Player():
         if self.last_func is None:
             self.last_func = self.pre_processing.get_concrete_function(s_batch)
         else:
-            current_func = self.train_step.get_concrete_function(sn_batch)
+            current_func = self.pre_processing.get_concrete_function(sn_batch)
             if self.last_func is current_func:
                 print(self.last_func is current_func)
                 raise ValueError
