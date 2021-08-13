@@ -669,7 +669,9 @@ class Player():
             self.last_func = self.train_step.get_concrete_function(*data)
         else:
             current_func = self.train_step.get_concrete_function(*data)
-            assert self.last_func is current_func
+            if self.last_func is current_func:
+                print(self.last_func is current_func)
+                raise ValueError
         self.train_step(*data)
 
         # Hard Target update
