@@ -15,8 +15,6 @@ from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 from agent_assets.replaybuffer import ReplayBuffer
 
-import tracemalloc
-tracemalloc.start()
 
 ENVIRONMENT = 'mouseUnity-v0'
 
@@ -116,6 +114,8 @@ per_round_steps = 0
 act_steps = 0
 
 if args.profile:
+    import tracemalloc
+    tracemalloc.start()
     for step in range(20):
         last_obs, cum_reward, rounds, act_steps,\
         per_round_steps, evaluated, reset_buffer\
@@ -135,7 +135,7 @@ if args.profile:
                 hp.k_train_step,
                 evaluate_f,
             )
-
+    snapshot1 = tracemalloc.take_snapshot()
     with Profile(f'logs/{args.log_name}'):
         for step in range(5):
             last_obs, cum_reward, rounds, act_steps,\
@@ -181,7 +181,10 @@ if args.profile:
             )
         if evaluated:
             need_to_eval = False
-
+    snapshot2 = tracemalloc.take_snapshot()
+    top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+    for stat in top_stats[:10]:
+        print(stat)
 else :
     while my_tqdm.n < total_steps:
         if (my_tqdm.n>0) and ((my_tqdm.n % hp.Model_save) \
@@ -208,10 +211,6 @@ else :
         if evaluated:
             need_to_eval = False
 
-snapshot = tracemalloc.take_snapshot()
-top_stats = snapshot.statistics('lineno')
-for stat in top_stats[:10]:
-    print(stat)
 
 player.save_model()
 score = evaluate_f(player, env, 'mp4')
