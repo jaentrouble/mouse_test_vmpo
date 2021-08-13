@@ -51,6 +51,10 @@ class Player():
         mixed_float : bool
             Whether or not to use mixed precision
         """
+        #TODO : ERASE
+        self.last_func = None
+
+
         # model : The actual training model
         # t_model : Fixed target model
         print('Model directory : {}'.format(m_dir))
@@ -661,6 +665,11 @@ class Player():
             sp_batch,
         )
 
+        if self.last_func is None:
+            self.last_func = self.train_step.get_concrete_function(*data)
+        else:
+            current_func = self.train_step.get_concrete_function(*data)
+            assert self.last_func is current_func
         self.train_step(*data)
 
         # Hard Target update
