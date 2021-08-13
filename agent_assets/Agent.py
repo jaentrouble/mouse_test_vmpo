@@ -64,7 +64,8 @@ class Player():
         self.observation_space = observation_space
         self.obs_range = {}
         self.obs_middle = {}
-        for name, space in self.observation_space.items():
+        for name in self.observation_space:
+            space = self.observation_space[name]
             o_range = (space.high - space.low)
             o_middle = (space.high + space.low)/2
             o_range = np.where(np.isfinite(o_range),o_range,1)
