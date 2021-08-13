@@ -254,6 +254,14 @@ class Player():
         Will squeeze axis=0 if Batch_num = 1
         If you don't want to squeeze, use act_batch()
         """
+        if self.last_func is None:
+            self.last_func = self.choose_action.get_concrete_function(before_state)
+        else:
+            current_func = self.choose_action.get_concrete_function(before_state)
+            if self.last_func is current_func:
+                print(self.last_func is current_func)
+                raise ValueError
+
         action = self.choose_action(before_state)
         action_np = action.numpy()
         if action_np.shape[0] == 1:
@@ -650,13 +658,6 @@ class Player():
 
         s_batch, a_batch, r_batch, d_batch, sn_batch, sp_batch \
             = buf.sample(need_next_obs=hp.ICM_ENABLE)
-        if self.last_func is None:
-            self.last_func = self.pre_processing.get_concrete_function(s_batch)
-        else:
-            current_func = self.pre_processing.get_concrete_function(sn_batch)
-            if self.last_func is current_func:
-                print(self.last_func is current_func)
-                raise ValueError
         s_batch = self.pre_processing(s_batch)
         sn_batch = self.pre_processing(sn_batch)
         if hp.ICM_ENABLE:
