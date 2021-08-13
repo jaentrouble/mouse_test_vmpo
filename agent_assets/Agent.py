@@ -650,6 +650,13 @@ class Player():
 
         s_batch, a_batch, r_batch, d_batch, sn_batch, sp_batch \
             = buf.sample(need_next_obs=hp.ICM_ENABLE)
+        if self.last_func is None:
+            self.last_func = self.pre_processing.get_concrete_function(s_batch)
+        else:
+            current_func = self.train_step.get_concrete_function(sn_batch)
+            if self.last_func is current_func:
+                print(self.last_func is current_func)
+                raise ValueError
         s_batch = self.pre_processing(s_batch)
         sn_batch = self.pre_processing(sn_batch)
         if hp.ICM_ENABLE:
@@ -665,13 +672,6 @@ class Player():
             sp_batch,
         )
 
-        if self.last_func is None:
-            self.last_func = self.train_step.get_concrete_function(*data)
-        else:
-            current_func = self.train_step.get_concrete_function(*data)
-            if self.last_func is current_func:
-                print(self.last_func is current_func)
-                raise ValueError
         self.train_step(*data)
 
         # Hard Target update
