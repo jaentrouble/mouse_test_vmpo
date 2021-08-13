@@ -206,12 +206,11 @@ class Player():
             if len(observation[name].shape)==\
                 len(self.observation_space[name].shape):
                 processed_obs[name] = tf.constant(
-                    2*(tf.cast(obs[tf.newaxis,...],tf.float32)-obs_middle)\
-                                                            /obs_range)
+                    2*(obs[np.newaxis,...]-obs_middle)/obs_range,dtype=tf.float32)
                                         
             else :
                 processed_obs[name] = tf.constant(
-                    2*(tf.cast(obs, tf.float32)-obs_middle)/obs_range)
+                    2*(obs-obs_middle)/obs_range,dtype=tf.float32)
         return processed_obs
 
     @tf.function
