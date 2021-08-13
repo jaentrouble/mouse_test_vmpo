@@ -51,9 +51,6 @@ class Player():
         mixed_float : bool
             Whether or not to use mixed precision
         """
-        #TODO : ERASE
-        self.last_func = None
-
 
         # model : The actual training model
         # t_model : Fixed target model
@@ -186,7 +183,7 @@ class Player():
             return new_lr
 
 
-    @tf.function
+    # @tf.function
     def pre_processing(self, observation:dict):
         """
         Preprocess input data
@@ -215,7 +212,7 @@ class Player():
                     2*(tf.cast(obs, tf.float32)-obs_middle)/obs_range
         return processed_obs
 
-    @tf.function
+    # @tf.function
     def choose_action(self, before_state):
         """
         Policy part
@@ -254,13 +251,13 @@ class Player():
         Will squeeze axis=0 if Batch_num = 1
         If you don't want to squeeze, use act_batch()
         """
-        if self.last_func is None:
-            self.last_func = self.choose_action.get_concrete_function(before_state)
-        else:
-            current_func = self.choose_action.get_concrete_function(before_state)
-            if self.last_func is current_func:
-                print(self.last_func is current_func)
-                raise ValueError
+        # if self.last_func is None:
+        #     self.last_func = self.choose_action.get_concrete_function(before_state)
+        # else:
+        #     current_func = self.choose_action.get_concrete_function(before_state)
+        #     if self.last_func is current_func:
+        #         print(self.last_func is current_func)
+        #         raise ValueError
 
         action = self.choose_action(before_state)
         action_np = action.numpy()
@@ -270,7 +267,7 @@ class Player():
             return action_np
 
 
-    @tf.function
+    # @tf.function
     def train_step(self, o, r, d, a, sn_batch, sp_batch=None):
         """
         All inputs are expected to be preprocessed
