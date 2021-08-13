@@ -15,6 +15,9 @@ from tensorflow.profiler.experimental import Profile
 from datetime import timedelta
 from agent_assets.replaybuffer import ReplayBuffer
 
+import tracemalloc
+tracemalloc.start()
+
 ENVIRONMENT = 'mouseUnity-v0'
 
 env_kwargs = dict(
@@ -204,6 +207,11 @@ else :
             )
         if evaluated:
             need_to_eval = False
+
+snapshot = tracemalloc.take_snapshot()
+top_stats = snapshot.statistics('lineno')
+for stat in top_stats[:10]:
+    print(stat)
 
 player.save_model()
 score = evaluate_f(player, env, 'mp4')
